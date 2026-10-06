@@ -1,0 +1,121 @@
+---
+import Icon from './Icon.astro';
+import { aspecto, esHorizontal, normalizar, vtName, type Entrada } from '../lib/site';
+
+interface Props {
+  entrada: Entrada;
+}
+
+const { entrada } = Astro.props;
+const { titulo, categoria, herramientas, video, poster, formato, prompts } = entrada.data;
+
+const busqueda = normalizar([titulo, categoria, ...herramientas, ...prompts.map((p) => p.texto)].join(' '));
+---
+
+<li class:list={['tarjeta', { 'tarjeta--ancha': esHorizontal(formato) }]} data-buscar={busqueda} data-categoria={normalizar(categoria)}>
+  <a href={`/p/${entrada.id}/`} data-hover>
+    <div class="tarjeta__media" style={`aspect-ratio: ${aspecto(formato)}; view-transition-name: ${vtName(entrada.id)}`}>
+      <video data-play="hover" muted loop playsinline preload="none" poster={poster} aria-hidden="true" tabindex="-1">
+        <source src={video} type="video/mp4" />
+      </video>
+    </div>
+    <div class="tarjeta__info">
+      <h3>{titulo}<Icon name="arrowUpRight" /></h3>
+      <p class="mono">{categoria}</p>
+    </div>
+  </a>
+</li>
+
+<style>
+  .tarjeta[hidden] {
+    display: none;
+  }
+  .tarjeta--ancha {
+    grid-column: span 2;
+  }
+  a {
+    display: block;
+  }
+  .tarjeta__media {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius);
+    background: var(--surface);
+    transition: transform 0.6s var(--ease);
+  }
+  .tarjeta__media::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text) 8%, transparent);
+    pointer-events: none;
+  }
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.9s var(--ease);
+  }
+  .tarjeta__info {
+    padding: 14px 2px 0;
+  }
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 1rem;
+    font-weight: 550;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+  h3 :global(.icon) {
+    width: 0.95em;
+    height: 0.95em;
+    color: var(--accent);
+    opacity: 0;
+    transform: translate(-4px, 4px);
+    transition:
+      opacity 0.3s ease,
+      transform 0.4s var(--ease);
+  }
+  p {
+    margin-top: 4px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (hover: hover) {
+    a:hover .tarjeta__media {
+      transform: translateY(-4px);
+    }
+    a:hover video {
+      transform: scale(1.03);
+    }
+    a:hover h3 :global(.icon) {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  a:active .tarjeta__media {
+    transform: scale(0.985);
+  }
+  a:focus-visible {
+    outline: none;
+  }
+  a:focus-visible .tarjeta__media {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 767px) {
+    .tarjeta--ancha {
+      grid-column: 1 / -1;
+    }
+    h3 {
+      font-size: 0.9375rem;
+    }
+  }
+</style>

@@ -1,0 +1,10 @@
+// Cloudflare Workers con assets estáticos: sirve la carpeta dist/ que genera Astro.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "biblioteca",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page"
+  }
+}

@@ -1,0 +1,101 @@
+---
+import '@fontsource-variable/geist';
+import '@fontsource-variable/geist-mono';
+import '../styles/global.css';
+import Icon from '../components/Icon.astro';
+import { HANDLE, TIKTOK_URL } from '../lib/site';
+
+interface Props {
+  titulo?: string;
+  descripcion?: string;
+  imagen?: string;
+  video?: string;
+}
+
+const {
+  titulo,
+  descripcion = 'Los prompts exactos detrás de los motion graphics con IA de @itskeo5. Cada video con su prompt, listo para copiar.',
+  imagen,
+  video,
+} = Astro.props;
+
+const tituloCompleto = titulo ? `${titulo} · Prompt de ${HANDLE}` : `Biblioteca de prompts de ${HANDLE}`;
+const base = Astro.site ?? Astro.url;
+const canonica = new URL(Astro.url.pathname, base).href;
+const og = imagen ? new URL(imagen, base).href : undefined;
+const ogVideo = video ? new URL(video, base).href : undefined;
+const anio = new Date().getFullYear();
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{tituloCompleto}</title>
+    <meta name="description" content={descripcion} />
+    <link rel="canonical" href={canonica} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0a0d0c" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#eff3f1" media="(prefers-color-scheme: light)" />
+
+    <meta property="og:type" content={titulo ? 'article' : 'website'} />
+    <meta property="og:site_name" content={`Biblioteca de ${HANDLE}`} />
+    <meta property="og:title" content={tituloCompleto} />
+    <meta property="og:description" content={descripcion} />
+    <meta property="og:url" content={canonica} />
+    {og && <meta property="og:image" content={og} />}
+    {ogVideo && <meta property="og:video" content={ogVideo} />}
+    <meta name="twitter:card" content={og ? 'summary_large_image' : 'summary'} />
+
+    <!--
+      Interruptor de animaciones. Se activan salvo que el sistema pida "reducir movimiento".
+      Para probarlas igual: ?movimiento=1 (y ?movimiento=0 para volver a lo normal).
+    -->
+    <script is:inline>
+      (function () {
+        var forzar = null;
+        try {
+          var p = new URLSearchParams(location.search).get('movimiento');
+          if (p !== null) sessionStorage.setItem('movimiento', p);
+          forzar = sessionStorage.getItem('movimiento');
+        } catch (e) {}
+        var reducir = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (forzar === '1' || (!reducir && forzar !== '0')) document.documentElement.classList.add('anim');
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="saltar" href="#contenido">Saltar al contenido</a>
+
+    <header class="nav">
+      <div class="wrap nav__fila">
+        <a class="marca" href="/" aria-label="Biblioteca de Itskeo, inicio">itskeo<span>/biblioteca</span></a>
+        <a class="nav__tiktok" href={TIKTOK_URL} target="_blank" rel="noopener">
+          <Icon name="tiktok" />
+          <span>{HANDLE}</span>
+        </a>
+      </div>
+    </header>
+
+    <main id="contenido">
+      <slot />
+    </main>
+
+    <footer class="pie wrap">
+      <p class="pie__frase">¿Hiciste algo con estos prompts? <span>Etiquétame en TikTok, quiero verlo.</span></p>
+      <div class="pie__fila mono">
+        <span>© {anio} Itskeo</span>
+        <a class="btn btn--secundario" href={TIKTOK_URL} target="_blank" rel="noopener">
+          <Icon name="tiktok" />
+          Seguir en TikTok
+        </a>
+      </div>
+    </footer>
+
+    <script>
+      import '../scripts/videos';
+    </script>
+  </body>
+</html>

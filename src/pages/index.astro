@@ -1,0 +1,617 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import Tarjeta from '../components/Tarjeta.astro';
+import { aspecto, esHorizontal, getEntradas, normalizar } from '../lib/site';
+
+const entradas = await getEntradas();
+const principal = entradas.find((e) => !esHorizontal(e.data.formato)) ?? entradas[0];
+const recientes = entradas.slice(0, 6);
+const total = entradas.length;
+
+// Filtros por categoría, de la más usada a la menos.
+const conteo = new Map<string, { nombre: string; n: number }>();
+for (const e of entradas) {
+  const clave = normalizar(e.data.categoria);
+  conteo.set(clave, { nombre: e.data.categoria, n: (conteo.get(clave)?.n ?? 0) + 1 });
+}
+const categorias = [...conteo.entries()].sort((a, b) => b[1].n - a[1].n);
+
+const letras = [...'itskeo'];
+const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos, completos y listos para copiar.'.split(' ');
+---
+
+<Base>
+  <!-- Intro: el video se ve a través de las letras; al hacer scroll la cámara las atraviesa. -->
+  <section class="intro" data-intro>
+   <div class="intro__escena">
+    {
+      principal && (
+        <video
+          class="intro__video"
+          data-intro-video
+          data-play="auto"
+          muted
+          loop
+          playsinline
+          preload="auto"
+          poster={principal.data.poster}
+          aria-hidden="true"
+          tabindex="-1"
+        >
+          <source src={principal.data.video} type="video/mp4" />
+        </video>
+      )
+    }
+    <div class="intro__velo" data-velo></div>
+
+    <div class="intro__mascara" data-mascara aria-hidden="true">
+      <span class="intro__palabra" data-palabra>
+        {
+          letras.map((l) => (
+            <span class="intro__letra">
+              <span>{l}</span>
+            </span>
+          ))
+        }
+      </span>
+    </div>
+
+    <p class="intro__manifiesto wrap" data-manifiesto>
+      {manifiesto.map((p) => <span>{p} </span>)}
+    </p>
+
+    <div class="intro__base wrap" data-base>
+      <div class="intro__copy">
+        <h1>Cada video, <span>con su prompt.</span></h1>
+        <p>Los prompts reales detrás de mis motion graphics con IA. Cópialos, pruébalos y etiquétame.</p>
+      </div>
+      <a class="btn btn--primario" href="#biblioteca">Ver prompts <Icon name="arrowDown" /></a>
+    </div>
+   </div>
+  </section>
+
+  {
+    recientes.length > 0 && (
+      <section class="reciente" data-reciente aria-labelledby="reciente-titulo">
+        <div class="reciente__fijo">
+        <div class="reciente__pista" data-pista>
+          <div class="reciente__cabeza">
+            <h2 id="reciente-titulo">Lo más reciente</h2>
+            <p>Los últimos videos que subí a TikTok, con todo lo que usé para hacerlos.</p>
+          </div>
+          {recientes.map((e) => (
+            <a
+              class:list={['reciente__item', { 'reciente__item--ancho': esHorizontal(e.data.formato) }]}
+              href={`/p/${e.id}/`}
+              data-hover
+            >
+              <div class="reciente__media" style={`aspect-ratio: ${aspecto(e.data.formato)}`}>
+                <video
+                  data-play="auto"
+                  muted
+                  loop
+                  playsinline
+                  preload="metadata"
+                  poster={e.data.poster}
+                  aria-hidden="true"
+                  tabindex="-1"
+                >
+                  <source src={e.data.video} type="video/mp4" />
+                </video>
+              </div>
+              <div class="reciente__info">
+                <span class="mono">{e.data.categoria}</span>
+                <h3>
+                  {e.data.titulo}
+                  <Icon name="arrowUpRight" />
+                </h3>
+              </div>
+            </a>
+          ))}
+        </div>
+        </div>
+      </section>
+    )
+  }
+
+  <section id="biblioteca" class="biblio wrap" aria-labelledby="biblio-titulo">
+    <div class="biblio__cabeza">
+      <h2 id="biblio-titulo" data-revelar>Biblioteca <span class="mono" data-conteo>{total}</span></h2>
+
+      {
+        total > 0 && (
+          <div class="controles" data-revelar>
+            <div class="buscar">
+              <label for="q">Buscar</label>
+              <div class="buscar__campo">
+                <Icon name="search" />
+                <input
+                  id="q"
+                  type="search"
+                  placeholder="Espiral, neón, kling..."
+                  autocomplete="off"
+                  spellcheck="false"
+                  enterkeyhint="search"
+                />
+              </div>
+            </div>
+
+            {categorias.length > 1 && (
+              <div class="filtros" role="group" aria-label="Filtrar por categoría">
+                <button type="button" class="chip" data-filtro="" aria-pressed="true">
+                  Todo
+                </button>
+                {categorias.map(([clave, { nombre }]) => (
+                  <button type="button" class="chip" data-filtro={clave} aria-pressed="false">
+                    {nombre}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      }
+    </div>
+
+    {
+      total > 0 ? (
+        <ul class="rejilla" data-rejilla>
+          {entradas.map((e) => (
+            <Tarjeta entrada={e} />
+          ))}
+        </ul>
+      ) : (
+        <div class="vacio">
+          <p class="vacio__titulo">Los primeros prompts llegan pronto.</p>
+          <p>Mientras tanto, los videos están en TikTok.</p>
+        </div>
+      )
+    }
+
+    <div class="vacio" data-vacio hidden>
+      <p class="vacio__titulo">Nada coincide con esa búsqueda.</p>
+      <p>Prueba otra palabra o quita el filtro.</p>
+      <button type="button" class="btn btn--secundario" data-limpiar><Icon name="x" /> Limpiar</button>
+    </div>
+    <p class="sr-only" aria-live="polite" data-anuncio></p>
+  </section>
+</Base>
+
+<script>
+  import '../scripts/inicio';
+  import '../scripts/biblioteca';
+</script>
+
+<style>
+  /* ================= Intro ================= */
+  .intro {
+    position: relative;
+    margin-top: calc(var(--nav-h) * -1);
+    background: var(--bg);
+  }
+  /* Con animaciones la sección mide 2.2 pantallas y la escena se queda pegada mientras dura el recorrido. */
+  :global(.anim) .intro {
+    height: 220svh;
+  }
+  .intro__escena {
+    position: sticky;
+    top: 0;
+    isolation: isolate;
+    overflow: hidden;
+    height: 100svh;
+    min-height: 560px;
+  }
+  .intro__video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
+  .intro__velo {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    opacity: 0;
+    background: linear-gradient(to top, rgb(5 11 9 / 0.8), rgb(5 11 9 / 0.36) 60%, rgb(5 11 9 / 0.2));
+    pointer-events: none;
+  }
+
+  /* El video solo se ve donde están las letras: fondo sólido + letras blancas en "multiply". */
+  .intro__mascara {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    padding-bottom: 14svh;
+    background: var(--bg);
+    color: #fff;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+  }
+  @media (prefers-color-scheme: light) {
+    .intro__mascara {
+      color: #000;
+      mix-blend-mode: screen;
+    }
+  }
+  .intro__palabra {
+    position: relative;
+    display: flex;
+    font-size: clamp(7rem, 29vw, 34rem);
+    font-weight: 800;
+    line-height: 1;
+    will-change: transform;
+  }
+  /* Interletrado apretado con márgenes (no letter-spacing) para que el recorte de la entrada no corte los bordes. */
+  .intro__letra {
+    display: block;
+    overflow: clip;
+    padding-inline: 0.05em;
+    margin-inline: -0.0875em;
+  }
+  .intro__letra > span {
+    display: block;
+  }
+
+  .intro__base {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 3;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: clamp(28px, 5svh, 56px);
+  }
+  .intro__copy {
+    max-width: 34rem;
+  }
+  h1 {
+    font-size: clamp(1.75rem, 3vw, 2.75rem);
+    font-weight: 620;
+    letter-spacing: -0.04em;
+    line-height: 1.02;
+  }
+  h1 span {
+    color: var(--muted);
+  }
+  .intro__copy p {
+    margin-top: 12px;
+    max-width: 38ch;
+    color: var(--muted);
+  }
+
+  .intro__manifiesto {
+    display: none;
+  }
+
+  /* Estado inicial de la entrada (solo con animaciones activas, para que no parpadee). */
+  :global(.anim) .intro__letra > span {
+    transform: translateY(115%);
+  }
+  :global(.anim) .intro__video,
+  :global(.anim) .intro__base > * {
+    opacity: 0;
+  }
+  :global(.anim) .intro__manifiesto {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 0 0.28em;
+    font-size: clamp(2.25rem, 5.2vw, 5rem);
+    font-weight: 620;
+    letter-spacing: -0.045em;
+    line-height: 1.04;
+    color: #f2f2f0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  :global(.anim) .intro__manifiesto span {
+    opacity: 0.14;
+  }
+
+  /* ================= Lo más reciente ================= */
+  .reciente {
+    position: relative;
+    padding-block: clamp(80px, 12vw, 140px) 24px;
+  }
+  .reciente__pista {
+    display: flex;
+    align-items: flex-end;
+    gap: clamp(16px, 2vw, 28px);
+    padding-inline: var(--gutter);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .reciente__pista::-webkit-scrollbar {
+    display: none;
+  }
+  .reciente__cabeza {
+    flex: none;
+    width: min(30rem, 78vw);
+    align-self: center;
+    padding-right: clamp(16px, 4vw, 64px);
+    scroll-snap-align: start;
+  }
+  .reciente__cabeza h2 {
+    font-size: clamp(2.75rem, 6vw, 5.5rem);
+    font-weight: 620;
+    letter-spacing: -0.05em;
+    line-height: 0.95;
+  }
+  .reciente__cabeza p {
+    margin-top: 20px;
+    max-width: 30ch;
+    color: var(--muted);
+  }
+  .reciente__item {
+    flex: none;
+    scroll-snap-align: start;
+    width: calc(min(64svh, 600px) * 9 / 16);
+  }
+  .reciente__item--ancho {
+    width: calc(min(64svh, 600px) * 16 / 9);
+  }
+  .reciente__item:nth-child(odd) {
+    margin-bottom: 48px;
+  }
+  .reciente__media {
+    overflow: hidden;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text) 8%, transparent);
+    transition: transform 0.6s var(--ease);
+  }
+  .reciente__media video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.9s var(--ease);
+  }
+  .reciente__info {
+    padding-top: 14px;
+  }
+  .reciente__info .mono {
+    color: var(--muted);
+  }
+  .reciente__info h3 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+    font-size: 1.125rem;
+    font-weight: 550;
+    letter-spacing: -0.02em;
+  }
+  .reciente__info h3 :global(.icon) {
+    color: var(--accent);
+    opacity: 0;
+    transform: translate(-4px, 4px);
+    transition:
+      opacity 0.3s ease,
+      transform 0.4s var(--ease);
+  }
+  @media (hover: hover) {
+    .reciente__item:hover .reciente__media {
+      transform: translateY(-6px);
+    }
+    .reciente__item:hover video {
+      transform: scale(1.04);
+    }
+    .reciente__item:hover h3 :global(.icon) {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .reciente__item:active .reciente__media {
+    transform: scale(0.985);
+  }
+
+  /* Escritorio con animaciones: la sección mide una pantalla más el recorrido horizontal
+     (--recorrido lo calcula inicio.ts) y la pista se desliza mientras la escena está pegada. */
+  @media (min-width: 768px) {
+    :global(.anim) .reciente {
+      height: calc(100svh + var(--recorrido, 0px));
+      padding-block: 0;
+    }
+    :global(.anim) .reciente__fijo {
+      position: sticky;
+      top: 0;
+      height: 100svh;
+      display: flex;
+      align-items: center;
+      padding-top: var(--nav-h);
+      overflow: hidden;
+    }
+    :global(.anim) .reciente__item {
+      width: calc(min(56svh, 560px) * 9 / 16);
+    }
+    :global(.anim) .reciente__item--ancho {
+      width: calc(min(56svh, 560px) * 16 / 9);
+    }
+    :global(.anim) .reciente__pista {
+      overflow: visible;
+      scroll-snap-type: none;
+      will-change: transform;
+    }
+  }
+
+  /* ================= Biblioteca ================= */
+  .biblio {
+    padding-top: clamp(80px, 10vw, 140px);
+  }
+  .biblio__cabeza {
+    display: grid;
+    gap: 28px;
+    margin-bottom: 40px;
+  }
+  .biblio h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    font-size: clamp(2.75rem, 6vw, 5.5rem);
+    font-weight: 620;
+    letter-spacing: -0.05em;
+    line-height: 0.95;
+  }
+  .biblio h2 .mono {
+    font-size: 1rem;
+    color: var(--muted);
+    letter-spacing: 0;
+  }
+
+  .controles {
+    display: grid;
+    grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+    align-items: end;
+    gap: 16px 24px;
+  }
+  .buscar {
+    display: grid;
+    gap: 8px;
+  }
+  .buscar label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .buscar__campo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 48px;
+    padding-inline: 18px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    color: var(--muted);
+    transition: border-color 0.2s ease;
+  }
+  .buscar__campo:focus-within {
+    border-color: var(--accent);
+  }
+  .buscar input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    outline: 0;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 1rem;
+  }
+  .buscar input::placeholder {
+    color: var(--muted);
+  }
+
+  .filtros {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+    padding-block: 2px;
+  }
+  .filtros::-webkit-scrollbar {
+    display: none;
+  }
+  .chip {
+    flex: none;
+    scroll-snap-align: start;
+    height: 40px;
+    padding-inline: 16px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease,
+      transform 0.3s var(--ease);
+  }
+  .chip:hover {
+    background: var(--surface);
+  }
+  .chip:active {
+    transform: scale(0.97);
+  }
+  .chip[aria-pressed='true'] {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--bg);
+  }
+
+  .rejilla {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 40px 20px;
+  }
+
+  .vacio {
+    display: grid;
+    justify-items: start;
+    gap: 6px;
+    padding: 56px 0;
+    color: var(--muted);
+  }
+  .vacio[hidden] {
+    display: none;
+  }
+  .vacio__titulo {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+  .vacio .btn {
+    margin-top: 18px;
+  }
+
+  /* ================= Responsive ================= */
+  @media (max-width: 1099px) {
+    .rejilla {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 860px) {
+    .controles {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 767px) {
+    .intro__base {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .intro__mascara {
+      padding-bottom: 30svh;
+    }
+    .reciente__item {
+      width: min(62vw, 300px);
+    }
+    .reciente__item--ancho {
+      width: 86vw;
+    }
+    .reciente__item:nth-child(odd) {
+      margin-bottom: 0;
+    }
+    .rejilla {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 28px 12px;
+    }
+  }
+</style>

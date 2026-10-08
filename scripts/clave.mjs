@@ -6,7 +6,7 @@ import { randomBytes } from 'node:crypto';
 import { resolve } from 'node:path';
 
 const raiz = resolve(import.meta.dirname, '..');
-const sitio = (process.env.SITE_URL || 'https://biblioteca.itskeo.workers.dev').replace(/\/$/, '');
+const sitio = (process.env.SITE_URL || 'https://biblioteca.kene00vargas.workers.dev').replace(/\/$/, '');
 const clave = randomBytes(24).toString('base64url');
 
 console.log('\nGuardando la clave nueva en Cloudflare (secreto PANEL_CLAVE)...');

@@ -1,10 +1,24 @@
-// Cloudflare Workers con assets estáticos: sirve la carpeta dist/ que genera Astro.
+// Worker de Astro (adaptador de Cloudflare) + D1 para los datos + R2 para videos y portadas.
+// Se despliega solo en cada push a GitHub (Workers Builds). La tabla de D1 la crea el propio Worker si falta.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "biblioteca",
   "compatibility_date": "2026-10-01",
-  "assets": {
-    "directory": "./dist",
-    "not_found_handling": "404-page"
-  }
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "biblioteca",
+      "database_id": "51bf6089-f550-423e-b135-a7f4267f1c74",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "biblioteca-media"
+    }
+  ],
+  "observability": { "enabled": true }
 }

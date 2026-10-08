@@ -2,20 +2,19 @@
 import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import Tarjeta from '../components/Tarjeta.astro';
-import { aspecto, esHorizontal, getEntradas, normalizar } from '../lib/site';
+import { listar } from '../lib/db';
+import { aspecto, esHorizontal, media } from '../lib/site';
 
-const entradas = await getEntradas();
-const principal = entradas.find((e) => !esHorizontal(e.data.formato)) ?? entradas[0];
+const entradas = await listar();
+const principal = entradas.find((e) => !esHorizontal(e.formato)) ?? entradas[0];
 const recientes = entradas.slice(0, 6);
 const total = entradas.length;
 
-// Filtros por categoría, de la más usada a la menos.
-const conteo = new Map<string, { nombre: string; n: number }>();
-for (const e of entradas) {
-  const clave = normalizar(e.data.categoria);
-  conteo.set(clave, { nombre: e.data.categoria, n: (conteo.get(clave)?.n ?? 0) + 1 });
-}
-const categorias = [...conteo.entries()].sort((a, b) => b[1].n - a[1].n);
+// Texto completo de cada prompt, para mostrar el fragmento donde aparece lo que se busca.
+// "<" escapado para que ningún prompt pueda cerrar la etiqueta <script>.
+const textos = JSON.stringify(
+  Object.fromEntries(entradas.map((e) => [e.id, e.prompts.map((p) => p.texto).join('\n\n')])),
+).replace(/</g, '\\u003c');
 
 const letras = [...'itskeo'];
 const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos, completos y listos para copiar.'.split(' ');
@@ -23,132 +22,121 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
 
 <Base>
   <!-- Intro: el video se ve a través de las letras; al hacer scroll la cámara las atraviesa. -->
-  <section class="intro" data-intro>
-   <div class="intro__escena">
-    {
-      principal && (
-        <video
-          class="intro__video"
-          data-intro-video
-          data-play="auto"
-          muted
-          loop
-          playsinline
-          preload="auto"
-          poster={principal.data.poster}
-          aria-hidden="true"
-          tabindex="-1"
-        >
-          <source src={principal.data.video} type="video/mp4" />
-        </video>
-      )
-    }
-    <div class="intro__velo" data-velo></div>
+  <section class:list={['intro', { 'intro--sin-video': !principal }]} data-intro>
+    <div class="intro__escena">
+      {
+        principal && (
+          <video
+            class="intro__video"
+            data-intro-video
+            data-play="auto"
+            muted
+            loop
+            playsinline
+            preload="auto"
+            poster={media(principal.poster)}
+            aria-hidden="true"
+            tabindex="-1"
+          >
+            <source src={media(principal.video)} type="video/mp4" />
+          </video>
+        )
+      }
+      <div class="intro__velo" data-velo></div>
 
-    <div class="intro__mascara" data-mascara aria-hidden="true">
-      <span class="intro__palabra" data-palabra>
-        {
-          letras.map((l) => (
-            <span class="intro__letra">
-              <span>{l}</span>
-            </span>
-          ))
-        }
-      </span>
-    </div>
-
-    <p class="intro__manifiesto wrap" data-manifiesto>
-      {manifiesto.map((p) => <span>{p} </span>)}
-    </p>
-
-    <div class="intro__base wrap" data-base>
-      <div class="intro__copy">
-        <h1>Cada video, <span>con su prompt.</span></h1>
-        <p>Los prompts reales detrás de mis motion graphics con IA. Cópialos, pruébalos y etiquétame.</p>
+      <div class="intro__mascara" data-mascara aria-hidden="true">
+        <span class="intro__palabra" data-palabra>
+          {
+            letras.map((l) => (
+              <span class="intro__letra">
+                <span>{l}</span>
+              </span>
+            ))
+          }
+        </span>
       </div>
-      <a class="btn btn--primario" href="#biblioteca">Ver prompts <Icon name="arrowDown" /></a>
+
+      <p class="intro__manifiesto wrap" data-manifiesto>
+        {manifiesto.map((p) => <span>{p} </span>)}
+      </p>
+
+      <div class="intro__base wrap" data-base>
+        <div class="intro__copy">
+          <h1>Cada video, <span>con su prompt.</span></h1>
+          <p>Aquí dejo los prompts exactos de mis videos. Cópialos, juega con ellos y etiquétame con lo que salga.</p>
+        </div>
+        <a class="btn btn--primario" href="#biblioteca">Ver prompts <Icon name="arrowDown" /></a>
+      </div>
     </div>
-   </div>
   </section>
 
   {
     recientes.length > 0 && (
       <section class="reciente" data-reciente aria-labelledby="reciente-titulo">
         <div class="reciente__fijo">
-        <div class="reciente__pista" data-pista>
-          <div class="reciente__cabeza">
-            <h2 id="reciente-titulo">Lo más reciente</h2>
-            <p>Los últimos videos que subí a TikTok, con todo lo que usé para hacerlos.</p>
+          <div class="reciente__pista" data-pista>
+            <div class="reciente__cabeza">
+              <h2 id="reciente-titulo">Lo más reciente</h2>
+              <p>Lo último que subí a TikTok, con el prompt listo para copiar.</p>
+            </div>
+            {recientes.map((e) => (
+              <a
+                class:list={['reciente__item', { 'reciente__item--ancho': esHorizontal(e.formato) }]}
+                href={`/p/${e.id}/`}
+                data-hover
+              >
+                <div class="reciente__media" style={`aspect-ratio: ${aspecto(e.formato)}`}>
+                  <video
+                    data-play="auto"
+                    muted
+                    loop
+                    playsinline
+                    preload="metadata"
+                    poster={media(e.poster)}
+                    aria-hidden="true"
+                    tabindex="-1"
+                  >
+                    <source src={media(e.video)} type="video/mp4" />
+                  </video>
+                </div>
+                <div class="reciente__info">
+                  <h3>
+                    {e.titulo}
+                    <Icon name="arrowUpRight" />
+                  </h3>
+                  {e.herramientas.length > 0 && <p>{e.herramientas.join(' + ')}</p>}
+                </div>
+              </a>
+            ))}
           </div>
-          {recientes.map((e) => (
-            <a
-              class:list={['reciente__item', { 'reciente__item--ancho': esHorizontal(e.data.formato) }]}
-              href={`/p/${e.id}/`}
-              data-hover
-            >
-              <div class="reciente__media" style={`aspect-ratio: ${aspecto(e.data.formato)}`}>
-                <video
-                  data-play="auto"
-                  muted
-                  loop
-                  playsinline
-                  preload="metadata"
-                  poster={e.data.poster}
-                  aria-hidden="true"
-                  tabindex="-1"
-                >
-                  <source src={e.data.video} type="video/mp4" />
-                </video>
-              </div>
-              <div class="reciente__info">
-                <span class="mono">{e.data.categoria}</span>
-                <h3>
-                  {e.data.titulo}
-                  <Icon name="arrowUpRight" />
-                </h3>
-              </div>
-            </a>
-          ))}
-        </div>
         </div>
       </section>
     )
   }
 
   <section id="biblioteca" class="biblio wrap" aria-labelledby="biblio-titulo">
-    <div class="biblio__cabeza">
-      <h2 id="biblio-titulo" data-revelar>Biblioteca <span class="mono" data-conteo>{total}</span></h2>
+    <div class="biblio__cabeza" data-revelar>
+      <h2 id="biblio-titulo">Todos los prompts <span class="conteo" data-conteo>{total}</span></h2>
 
       {
         total > 0 && (
-          <div class="controles" data-revelar>
-            <div class="buscar">
-              <label for="q">Buscar</label>
-              <div class="buscar__campo">
-                <Icon name="search" />
-                <input
-                  id="q"
-                  type="search"
-                  placeholder="Espiral, neón, kling..."
-                  autocomplete="off"
-                  spellcheck="false"
-                  enterkeyhint="search"
-                />
-              </div>
+          <div class="buscar">
+            <label for="q">Busca dentro de los prompts</label>
+            <div class="buscar__campo">
+              <Icon name="search" />
+              <input
+                id="q"
+                type="search"
+                placeholder="nike, 16:9, neón…"
+                autocomplete="off"
+                spellcheck="false"
+                enterkeyhint="search"
+                aria-describedby="q-ayuda"
+              />
             </div>
-
-            {categorias.length > 1 && (
-              <div class="filtros" role="group" aria-label="Filtrar por categoría">
-                <button type="button" class="chip" data-filtro="" aria-pressed="true">
-                  Todo
-                </button>
-                {categorias.map(([clave, { nombre }]) => (
-                  <button type="button" class="chip" data-filtro={clave} aria-pressed="false">
-                    {nombre}
-                  </button>
-                ))}
-              </div>
-            )}
+            <p id="q-ayuda" class="buscar__ayuda">
+              Escribe cualquier palabra que esperas encontrar en el prompt: una marca, un estilo, una proporción.
+            </p>
           </div>
         )
       }
@@ -163,19 +151,21 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
         </ul>
       ) : (
         <div class="vacio">
-          <p class="vacio__titulo">Los primeros prompts llegan pronto.</p>
-          <p>Mientras tanto, los videos están en TikTok.</p>
+          <p class="vacio__titulo">Estoy preparando los primeros prompts.</p>
+          <p>Mientras tanto, los videos ya están en TikTok.</p>
         </div>
       )
     }
 
     <div class="vacio" data-vacio hidden>
-      <p class="vacio__titulo">Nada coincide con esa búsqueda.</p>
-      <p>Prueba otra palabra o quita el filtro.</p>
-      <button type="button" class="btn btn--secundario" data-limpiar><Icon name="x" /> Limpiar</button>
+      <p class="vacio__titulo">Ningún prompt dice <span data-vacio-q></span> todavía.</p>
+      <p>Prueba con otra palabra, o una más corta.</p>
+      <button type="button" class="btn btn--secundario" data-limpiar><Icon name="x" /> Ver todos</button>
     </div>
     <p class="sr-only" aria-live="polite" data-anuncio></p>
   </section>
+
+  <script type="application/json" id="textos" set:html={textos} />
 </Base>
 
 <script>
@@ -193,6 +183,9 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
   /* Con animaciones la sección mide 2.2 pantallas y la escena se queda pegada mientras dura el recorrido. */
   :global(.anim) .intro {
     height: 220svh;
+  }
+  :global(.anim) .intro--sin-video {
+    height: auto;
   }
   .intro__escena {
     position: sticky;
@@ -238,10 +231,16 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
       mix-blend-mode: screen;
     }
   }
+  /* Sin video todavía: la palabra se ve sólida en vez de ser una ventana vacía. */
+  .intro--sin-video .intro__mascara {
+    mix-blend-mode: normal;
+    color: var(--accent);
+  }
   .intro__palabra {
     position: relative;
     display: flex;
-    font-size: clamp(7rem, 29vw, 34rem);
+    font-family: var(--display);
+    font-size: clamp(7rem, 28vw, 32rem);
     font-weight: 800;
     line-height: 1;
     will-change: transform;
@@ -251,7 +250,7 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     display: block;
     overflow: clip;
     padding-inline: 0.05em;
-    margin-inline: -0.0875em;
+    margin-inline: -0.075em;
   }
   .intro__letra > span {
     display: block;
@@ -271,9 +270,9 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     max-width: 34rem;
   }
   h1 {
-    font-size: clamp(1.75rem, 3vw, 2.75rem);
-    font-weight: 620;
-    letter-spacing: -0.04em;
+    font-size: clamp(1.875rem, 3.2vw, 3rem);
+    font-weight: 700;
+    letter-spacing: -0.035em;
     line-height: 1.02;
   }
   h1 span {
@@ -305,9 +304,10 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     flex-wrap: wrap;
     align-content: center;
     gap: 0 0.28em;
+    font-family: var(--display);
     font-size: clamp(2.25rem, 5.2vw, 5rem);
-    font-weight: 620;
-    letter-spacing: -0.045em;
+    font-weight: 700;
+    letter-spacing: -0.035em;
     line-height: 1.04;
     color: #f2f2f0;
     opacity: 0;
@@ -343,8 +343,8 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
   }
   .reciente__cabeza h2 {
     font-size: clamp(2.75rem, 6vw, 5.5rem);
-    font-weight: 620;
-    letter-spacing: -0.05em;
+    font-weight: 700;
+    letter-spacing: -0.04em;
     line-height: 0.95;
   }
   .reciente__cabeza p {
@@ -368,27 +368,29 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     border-radius: var(--radius);
     background: var(--surface);
     box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text) 8%, transparent);
-    transition: transform 0.6s var(--ease);
+    transition: transform 400ms var(--ease-out);
   }
   .reciente__media video {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.9s var(--ease);
+    transition: transform 600ms var(--ease-out);
   }
   .reciente__info {
     padding-top: 14px;
   }
-  .reciente__info .mono {
+  .reciente__info p {
+    margin-top: 2px;
+    font-size: 0.875rem;
     color: var(--muted);
   }
   .reciente__info h3 {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-top: 2px;
-    font-size: 1.125rem;
-    font-weight: 550;
+    font-family: var(--display);
+    font-size: 1.1875rem;
+    font-weight: 650;
     letter-spacing: -0.02em;
   }
   .reciente__info h3 :global(.icon) {
@@ -396,10 +398,10 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     opacity: 0;
     transform: translate(-4px, 4px);
     transition:
-      opacity 0.3s ease,
-      transform 0.4s var(--ease);
+      opacity 200ms ease,
+      transform 250ms var(--ease-out);
   }
-  @media (hover: hover) {
+  @media (hover: hover) and (pointer: fine) {
     .reciente__item:hover .reciente__media {
       transform: translateY(-6px);
     }
@@ -412,7 +414,8 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     }
   }
   .reciente__item:active .reciente__media {
-    transform: scale(0.985);
+    transform: scale(0.98);
+    transition-duration: 160ms;
   }
 
   /* Escritorio con animaciones: la sección mide una pantalla más el recorrido horizontal
@@ -456,47 +459,51 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
   .biblio h2 {
     display: flex;
     align-items: baseline;
-    gap: 14px;
+    flex-wrap: wrap;
+    gap: 6px 16px;
     font-size: clamp(2.75rem, 6vw, 5.5rem);
-    font-weight: 620;
-    letter-spacing: -0.05em;
+    font-weight: 700;
+    letter-spacing: -0.04em;
     line-height: 0.95;
   }
-  .biblio h2 .mono {
+  .conteo {
+    font-family: var(--font);
     font-size: 1rem;
-    color: var(--muted);
+    font-weight: 500;
     letter-spacing: 0;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
   }
 
-  .controles {
-    display: grid;
-    grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
-    align-items: end;
-    gap: 16px 24px;
-  }
   .buscar {
     display: grid;
-    gap: 8px;
+    gap: 10px;
+    max-width: 640px;
   }
   .buscar label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--muted);
+    font-weight: 550;
   }
   .buscar__campo {
     display: flex;
     align-items: center;
-    gap: 10px;
-    height: 48px;
-    padding-inline: 18px;
+    gap: 12px;
+    height: 60px;
+    padding-inline: 22px;
     border-radius: 999px;
     border: 1px solid var(--line);
     background: var(--bg-2);
     color: var(--muted);
-    transition: border-color 0.2s ease;
+    transition:
+      border-color 200ms ease,
+      box-shadow 200ms ease;
+  }
+  .buscar__campo :global(.icon) {
+    width: 1.3em;
+    height: 1.3em;
   }
   .buscar__campo:focus-within {
     border-color: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent);
   }
   .buscar input {
     flex: 1;
@@ -507,52 +514,15 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     background: none;
     color: var(--text);
     font: inherit;
-    font-size: 1rem;
+    font-size: 1.0625rem;
   }
   .buscar input::placeholder {
     color: var(--muted);
   }
-
-  .filtros {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-    margin-inline: calc(var(--gutter) * -1);
-    padding-inline: var(--gutter);
-    padding-block: 2px;
-  }
-  .filtros::-webkit-scrollbar {
-    display: none;
-  }
-  .chip {
-    flex: none;
-    scroll-snap-align: start;
-    height: 40px;
-    padding-inline: 16px;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: none;
+  .buscar__ayuda {
     font-size: 0.875rem;
-    font-weight: 500;
-    white-space: nowrap;
-    transition:
-      background-color 0.2s ease,
-      color 0.2s ease,
-      border-color 0.2s ease,
-      transform 0.3s var(--ease);
-  }
-  .chip:hover {
-    background: var(--surface);
-  }
-  .chip:active {
-    transform: scale(0.97);
-  }
-  .chip[aria-pressed='true'] {
-    background: var(--text);
-    border-color: var(--text);
-    color: var(--bg);
+    color: var(--muted);
+    max-width: 60ch;
   }
 
   .rejilla {
@@ -572,10 +542,12 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     display: none;
   }
   .vacio__titulo {
+    font-family: var(--display);
     font-size: 1.5rem;
-    font-weight: 600;
-    letter-spacing: -0.03em;
+    font-weight: 650;
+    letter-spacing: -0.025em;
     color: var(--text);
+    overflow-wrap: anywhere;
   }
   .vacio .btn {
     margin-top: 18px;
@@ -585,11 +557,6 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
   @media (max-width: 1099px) {
     .rejilla {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-  @media (max-width: 860px) {
-    .controles {
-      grid-template-columns: 1fr;
     }
   }
   @media (max-width: 767px) {

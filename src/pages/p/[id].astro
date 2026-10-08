@@ -1,44 +1,32 @@
 ---
-import { render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
-import { aspecto, esHorizontal, fecha, getEntradas, normalizar, vtName, type Entrada } from '../../lib/site';
+import { listar, obtener, type Entrada } from '../../lib/db';
+import { aspecto, esHorizontal, fecha, media, vtName } from '../../lib/site';
 
-export async function getStaticPaths() {
-  const entradas = await getEntradas();
-  return entradas.map((entrada, i) => ({
-    params: { id: entrada.id },
-    props: {
-      entrada,
-      masNueva: entradas[i - 1],
-      masAntigua: entradas[i + 1],
-    },
-  }));
-}
+const entrada = await obtener(Astro.params.id ?? '');
+if (!entrada || entrada.borrador) return Astro.rewrite('/404');
 
-interface Props {
-  entrada: Entrada;
-  masNueva?: Entrada;
-  masAntigua?: Entrada;
-}
+const { id, titulo, herramientas, video, poster, formato, prompts, tiktok, sonido, notas, fecha: dia } = entrada;
 
-const { entrada, masNueva, masAntigua } = Astro.props;
-const { titulo, categoria, herramientas, video, poster, formato, prompts, tiktok, sonido, fecha: dia } = entrada.data;
-const { Content } = await render(entrada);
-const tieneNotas = Boolean(entrada.body?.trim());
-const descripcion = `${herramientas.join(' + ')}. ${prompts[0].texto}`.slice(0, 155);
+// Vecinos para seguir explorando: el más antiguo y el más nuevo respecto a este.
+const todas = await listar();
+const i = todas.findIndex((e) => e.id === id);
 const vecinos = [
-  masAntigua && { e: masAntigua, rotulo: 'Anterior', dir: 'izq' as const },
-  masNueva && { e: masNueva, rotulo: 'Siguiente', dir: 'der' as const },
+  todas[i + 1] && { e: todas[i + 1], rotulo: 'Anterior', dir: 'izq' as const },
+  todas[i - 1] && { e: todas[i - 1], rotulo: 'Siguiente', dir: 'der' as const },
 ].filter(Boolean) as { e: Entrada; rotulo: string; dir: 'izq' | 'der' }[];
+
+const parrafos = notas.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+const descripcion = `${herramientas.length ? `${herramientas.join(' + ')}. ` : ''}${prompts[0]?.texto ?? ''}`.slice(0, 155);
 ---
 
-<Base titulo={titulo} descripcion={descripcion} imagen={poster} video={video}>
+<Base titulo={titulo} descripcion={descripcion} imagen={media(poster)} video={media(video)}>
   <article class:list={['detalle wrap', { 'detalle--ancho': esHorizontal(formato) }]}>
     <div class="detalle__media">
-      <div class="player" style={`aspect-ratio: ${aspecto(formato)}; view-transition-name: ${vtName(entrada.id)}`}>
-        <video data-play="auto" muted loop playsinline preload="auto" poster={poster} data-player>
-          <source src={video} type="video/mp4" />
+      <div class="player" style={`aspect-ratio: ${aspecto(formato)}; view-transition-name: ${vtName(id)}`}>
+        <video data-play="auto" muted loop playsinline preload="auto" poster={media(poster)} data-player>
+          <source src={media(video)} type="video/mp4" />
         </video>
         {
           sonido && (
@@ -57,27 +45,32 @@ const vecinos = [
     </div>
 
     <div class="detalle__texto">
-      <a class="volver" href="/#biblioteca"><Icon name="arrowLeft" /> Biblioteca</a>
+      <a class="volver" href="/#biblioteca"><Icon name="arrowLeft" /> Todos los prompts</a>
 
       <h1>{titulo}</h1>
       <div class="meta">
-        <time class="mono" datetime={dia.toISOString().slice(0, 10)}>{fecha(dia)}</time>
-        <a class="categoria" href={`/?c=${encodeURIComponent(normalizar(categoria))}#biblioteca`}>{categoria}</a>
+        <time class="mono" datetime={dia}>{fecha(dia)}</time>
       </div>
-      <div class="hecho-con">
-        <span class="mono">Hecho con</span>
-        <ul class="herramientas">
-          {herramientas.map((h) => <li>{h}</li>)}
-        </ul>
-      </div>
+      {
+        herramientas.length > 0 && (
+          <div class="hecho-con">
+            <span>Hecho con</span>
+            <ul class="herramientas">
+              {herramientas.map((h) => (
+                <li>{h}</li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
 
       <div class="prompts">
         {
-          prompts.map((p, i) => (
-            <section class="prompt" aria-labelledby={`prompt-${i}`}>
+          prompts.map((p, n) => (
+            <section class="prompt" aria-labelledby={`prompt-${n}`}>
               <div class="prompt__cabeza">
-                <h2 id={`prompt-${i}`}>{p.etiqueta}</h2>
-                <button type="button" class="copiar" data-copiar={`texto-${i}`}>
+                <h2 id={`prompt-${n}`}>{p.etiqueta}</h2>
+                <button type="button" class="copiar" data-copiar={`texto-${n}`}>
                   <span class="copiar__normal">
                     <Icon name="copy" /> Copiar
                   </span>
@@ -86,19 +79,22 @@ const vecinos = [
                   </span>
                 </button>
               </div>
-              <pre id={`texto-${i}`}>{p.texto}</pre>
+              <pre id={`texto-${n}`}>{p.texto}</pre>
             </section>
           ))
         }
+        <p class="consejo">Cópialo tal cual, pégalo en la herramienta y cambia lo que quieras. Si haces algo, etiquétame.</p>
       </div>
       <p class="sr-only" aria-live="polite" data-anuncio></p>
 
       {
-        tieneNotas && (
+        parrafos.length > 0 && (
           <section class="notas" aria-labelledby="notas-titulo">
-            <h2 id="notas-titulo">Notas</h2>
+            <h2 id="notas-titulo">Cómo lo hice</h2>
             <div class="prosa">
-              <Content />
+              {parrafos.map((p) => (
+                <p>{p}</p>
+              ))}
             </div>
           </section>
         )
@@ -119,14 +115,18 @@ const vecinos = [
       <nav class="vecinos wrap" aria-label="Más prompts">
         {vecinos.map(({ e, rotulo, dir }) => (
           <a class:list={['vecino', `vecino--${dir}`]} href={`/p/${e.id}/`}>
-            <img src={e.data.poster} alt="" loading="lazy" decoding="async" width="72" height="128" />
+            {e.poster ? (
+              <img src={media(e.poster)} alt="" loading="lazy" decoding="async" width="72" height="128" />
+            ) : (
+              <span class="vecino__sin-poster" />
+            )}
             <span class="vecino__texto">
-              <span class="mono">
+              <span class="vecino__rotulo">
                 {dir === 'izq' && <Icon name="arrowLeft" />}
                 {rotulo}
                 {dir === 'der' && <Icon name="arrowRight" />}
               </span>
-              <span class="vecino__titulo">{e.data.titulo}</span>
+              <span class="vecino__titulo">{e.titulo}</span>
             </span>
           </a>
         ))}
@@ -298,8 +298,8 @@ const vecinos = [
   h1 {
     margin-top: 28px;
     font-size: clamp(2.5rem, 4.6vw, 4.25rem);
-    font-weight: 620;
-    letter-spacing: -0.045em;
+    font-weight: 700;
+    letter-spacing: -0.035em;
     line-height: 1;
     text-wrap: balance;
   }
@@ -313,18 +313,6 @@ const vecinos = [
   .meta time {
     color: var(--muted);
   }
-  .categoria {
-    padding: 4px 12px;
-    border-radius: 999px;
-    border: 1px solid color-mix(in oklab, var(--accent) 55%, transparent);
-    color: var(--text);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    transition: background-color 0.2s ease;
-  }
-  .categoria:hover {
-    background: color-mix(in oklab, var(--accent) 16%, transparent);
-  }
   .hecho-con {
     margin-top: 14px;
     display: flex;
@@ -332,7 +320,8 @@ const vecinos = [
     align-items: center;
     gap: 8px 12px;
   }
-  .hecho-con > .mono {
+  .hecho-con > span {
+    font-size: 0.875rem;
     color: var(--muted);
   }
   .herramientas {
@@ -355,6 +344,7 @@ const vecinos = [
   }
   .prompt {
     border-radius: var(--radius);
+    transition: border-color 200ms ease;
     background: var(--bg-2);
     border: 1px solid var(--line);
     overflow: hidden;
@@ -367,6 +357,7 @@ const vecinos = [
     padding: 10px 10px 0 20px;
   }
   .prompt h2 {
+    font-family: var(--font);
     font-size: 0.9375rem;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -377,15 +368,14 @@ const vecinos = [
     height: 40px;
     padding-inline: 16px;
     border-radius: 999px;
-    border: 1px solid var(--line);
-    background: var(--surface);
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: 600;
     transition:
-      background-color 0.2s ease,
-      border-color 0.2s ease,
-      color 0.2s ease,
-      transform 0.3s var(--ease);
+      background-color 200ms ease,
+      transform 160ms var(--ease-out);
   }
   .copiar > span {
     grid-area: 1 / 1;
@@ -394,31 +384,38 @@ const vecinos = [
     justify-content: center;
     gap: 8px;
     transition:
-      opacity 0.25s ease,
-      transform 0.4s var(--ease);
+      opacity 200ms ease,
+      filter 200ms ease,
+      transform 250ms var(--ease-out);
   }
+  /* Cambio de estado con un leve desenfoque: se lee como una sola transformación (Emil). */
   .copiar__hecho {
     opacity: 0;
-    transform: translateY(8px);
+    filter: blur(2px);
+    transform: translateY(6px);
   }
-  .copiar:hover {
-    border-color: color-mix(in oklab, var(--line) 50%, var(--text));
+  @media (hover: hover) and (pointer: fine) {
+    .copiar:hover {
+      background: color-mix(in oklab, var(--accent) 88%, var(--text));
+    }
   }
   .copiar:active {
     transform: scale(0.97);
   }
-  .copiar.hecho {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--on-accent);
-  }
   .copiar.hecho .copiar__normal {
     opacity: 0;
-    transform: translateY(-8px);
+    filter: blur(2px);
+    transform: translateY(-6px);
   }
   .copiar.hecho .copiar__hecho {
     opacity: 1;
+    filter: none;
     transform: none;
+  }
+  .consejo {
+    margin-top: 4px;
+    font-size: 0.875rem;
+    color: var(--muted);
   }
   pre {
     margin: 0;
@@ -436,9 +433,9 @@ const vecinos = [
     max-width: 62ch;
   }
   .notas h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    letter-spacing: -0.03em;
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
   }
   .prosa {
     margin-top: 12px;
@@ -501,17 +498,26 @@ const vecinos = [
     gap: 2px;
     min-width: 0;
   }
-  .vecino .mono {
+  .vecino__rotulo {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    font-size: 0.875rem;
     color: var(--muted);
   }
-  .vecino--der .mono {
+  .vecino--der .vecino__rotulo {
     justify-content: flex-end;
   }
+  .vecino__sin-poster {
+    width: 48px;
+    height: 72px;
+    border-radius: 8px;
+    background: var(--surface);
+    flex: none;
+  }
   .vecino__titulo {
-    font-weight: 550;
+    font-family: var(--display);
+    font-weight: 650;
     letter-spacing: -0.02em;
     white-space: nowrap;
     overflow: hidden;

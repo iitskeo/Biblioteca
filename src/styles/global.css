@@ -3,7 +3,10 @@
   - Un solo acento: verde menta, sacado del texto de los videos (#7eeaba núcleo, #67dba5 con glow).
     Neutros con un tinte verde azulado muy leve.
     Para ajustar el tono basta con cambiar --accent (y su versión clara más abajo).
-  - Radios: medios (videos, bloques) 14px; todo lo interactivo (botones, chips, buscador) en píldora.
+  - Tipografía: Bricolage Grotesque para títulos (carácter amable), Geist para texto, Geist Mono solo para prompts y fechas.
+  - Radios: medios (videos, bloques) 20px; detalles 12px; todo lo interactivo (botones, buscador) en píldora.
+  - Movimiento (criterio de Emil Kowalski): respuestas de UI < 300 ms con curvas de salida fuertes;
+    lo que se repite mucho no se anima; el único momento largo es la intro.
   - Capas (z-index): 10 navegación, 20 enlace de salto, 30 grano.
 */
 
@@ -22,10 +25,14 @@
   --media-shadow: 0 40px 80px -40px rgb(0 0 0 / 0.85);
 
   --font: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --display: 'Bricolage Grotesque Variable', 'Geist Variable', ui-sans-serif, sans-serif;
   --mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, monospace;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
-  --radius: 14px;
+  --radius: 20px;
+  --radius-sm: 12px;
   --gutter: clamp(16px, 4vw, 40px);
   --max: 1320px;
   --nav-h: 64px;
@@ -51,6 +58,17 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* "hidden" siempre gana, aunque el componente declare su propio display. */
+[hidden] {
+  display: none !important;
+}
+
+:root {
+  accent-color: var(--accent);
+  caret-color: var(--accent);
+  scrollbar-color: color-mix(in oklab, var(--text) 22%, transparent) transparent;
 }
 
 html {
@@ -112,6 +130,19 @@ h2,
 h3,
 p {
   margin: 0;
+}
+
+h1,
+h2 {
+  font-family: var(--display);
+  text-wrap: balance;
+}
+
+mark {
+  background: color-mix(in oklab, var(--accent) 28%, transparent);
+  color: inherit;
+  border-radius: 4px;
+  padding: 0 2px;
 }
 
 ul {
@@ -193,33 +224,36 @@ ul {
   font-weight: 500;
   white-space: nowrap;
   transition:
-    transform 0.35s var(--ease),
-    background-color 0.25s ease,
-    border-color 0.25s ease;
+    transform 160ms var(--ease-out),
+    background-color 200ms ease,
+    border-color 200ms ease;
 }
 .btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 .btn--primario {
   background: var(--accent);
   color: var(--on-accent);
 }
-.btn--primario:hover {
-  background: color-mix(in oklab, var(--accent) 88%, var(--text));
-}
-.btn--primario:hover .icon {
-  transform: translateY(2px);
-}
 .btn .icon {
-  transition: transform 0.35s var(--ease);
+  transition: transform 200ms var(--ease-out);
 }
 .btn--secundario {
   border-color: var(--line);
+  background: transparent;
   color: var(--text);
 }
-.btn--secundario:hover {
-  background: var(--surface);
-  border-color: color-mix(in oklab, var(--line) 60%, var(--text));
+@media (hover: hover) and (pointer: fine) {
+  .btn--primario:hover {
+    background: color-mix(in oklab, var(--accent) 88%, var(--text));
+  }
+  .btn--primario:hover .icon {
+    transform: translateY(2px);
+  }
+  .btn--secundario:hover {
+    background: var(--surface);
+    border-color: color-mix(in oklab, var(--line) 60%, var(--text));
+  }
 }
 
 /* ---------- Navegación ---------- */
@@ -251,9 +285,10 @@ ul {
   display: inline-flex;
   align-items: baseline;
   gap: 2px;
-  font-size: 1.125rem;
-  font-weight: 650;
-  letter-spacing: -0.04em;
+  font-family: var(--display);
+  font-size: 1.1875rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 .marca span {
   color: var(--muted);
@@ -270,11 +305,13 @@ ul {
   font-size: 0.875rem;
   font-weight: 500;
   transition:
-    background-color 0.25s ease,
-    transform 0.35s var(--ease);
+    background-color 200ms ease,
+    transform 160ms var(--ease-out);
 }
-.nav__tiktok:hover {
-  background: var(--surface);
+@media (hover: hover) and (pointer: fine) {
+  .nav__tiktok:hover {
+    background: var(--surface);
+  }
 }
 .nav__tiktok:active {
   transform: scale(0.97);
@@ -288,9 +325,10 @@ ul {
   border-top: 1px solid var(--line);
 }
 .pie__frase {
+  font-family: var(--display);
   font-size: clamp(1.75rem, 4vw, 3rem);
-  font-weight: 600;
-  letter-spacing: -0.04em;
+  font-weight: 650;
+  letter-spacing: -0.035em;
   line-height: 1.05;
   max-width: 18ch;
 }

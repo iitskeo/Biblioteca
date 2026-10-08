@@ -51,7 +51,8 @@ function entrada() {
 function intro() {
   const seccion = document.querySelector<HTMLElement>('[data-intro]');
   const palabra = document.querySelector<HTMLElement>('[data-palabra]');
-  if (!seccion || !palabra) return;
+  // Sin video no hay nada que revelar al atravesar las letras: la intro se queda quieta.
+  if (!seccion || !palabra || !document.querySelector('[data-intro-video]')) return;
 
   // Punto de zoom: el trazo vertical de la "k", para que al acercarse la pantalla se llene de video.
   const letra = palabra.children[3] as HTMLElement | undefined;
@@ -126,11 +127,11 @@ function biblioteca() {
   gsap.utils.toArray<HTMLElement>('[data-revelar]').forEach((el) => {
     gsap.fromTo(
       el,
-      { opacity: 0, y: 50 },
+      { opacity: 0, y: 24 },
       {
         opacity: 1,
         y: 0,
-        duration: 1.1,
+        duration: 0.7,
         ease: 'expo.out',
         scrollTrigger: { trigger: el, start: 'top 88%', once: true },
       },
@@ -138,11 +139,11 @@ function biblioteca() {
   });
 
   const tarjetas = gsap.utils.toArray<HTMLElement>('.tarjeta');
-  gsap.set(tarjetas, { opacity: 0, y: 70 });
+  gsap.set(tarjetas, { opacity: 0, y: 24 });
   ScrollTrigger.batch(tarjetas, {
     start: 'top 92%',
     once: true,
     onEnter: (lote) =>
-      gsap.to(lote, { opacity: 1, y: 0, duration: 1.1, ease: 'expo.out', stagger: 0.08, overwrite: true }),
+      gsap.to(lote, { opacity: 1, y: 0, duration: 0.6, ease: 'expo.out', stagger: 0.05, overwrite: true }),
   });
 }

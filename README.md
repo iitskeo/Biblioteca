@@ -1,69 +1,80 @@
 # Biblioteca de prompts de @itskeo5
 
-Cada video que subo a TikTok, con el prompt exacto que lo generó. Sitio estático hecho con [Astro](https://astro.build) y publicado en Cloudflare Workers.
+Cada video que subo a TikTok, con el prompt exacto que lo generó. Astro sobre Cloudflare Workers: los datos viven en **D1** y los videos en **R2**, así que lo que subes desde el panel aparece al instante, sin tocar código.
 
-## Agregar un video nuevo
+## Subir un prompt
+
+1. Abre tu link privado del panel: `https://<tu-dominio>/panel#clave=…`
+2. Arrastra el video, mueve el deslizador para elegir la portada.
+3. Pon título, pega el prompt (o varios: imagen, video, negativo…), herramientas y, si quieres, el link del TikTok y cómo lo hiciste.
+4. **Publicar**. Te da el link de esa página para ponerlo en el TikTok.
+
+Desde la misma lista puedes **editar**, **borrar** (dos toques) o **copiar el link** de cualquier prompt. "Guardar como borrador" lo deja oculto de la web.
+
+El panel optimiza el video en tu navegador (720p, H.264) antes de subirlo cuando pesa más de 6 MB; si el resultado no es más liviano, sube el original. Los videos se suben en partes, así que no hay límite práctico de tamaño.
+
+### La clave del panel
+
+- No hay usuario ni contraseña: el panel funciona con una clave larga que va en el link, después de `#`. Esa parte nunca viaja al servidor ni queda en registros.
+- La clave vive como **secreto en Cloudflare** (`PANEL_CLAVE`), no en el código ni en el repo. Toda la API rechaza cualquier petición sin ella.
+- El navegador la recuerda después de entrar una vez. "Olvidar la clave en este navegador" la borra.
+- **Si el link se filtra**, genera otra clave con `npm run clave`: el link anterior deja de servir al instante.
+
+## Búsqueda
+
+No hay categorías: se busca por palabras dentro del texto de los prompts (y el título y las herramientas). "nike" muestra los que dicen nike; "16:9" los que tienen 16:9 escrito. Cada resultado muestra el pedazo del prompt donde aparece la palabra, resaltada. Se puede compartir una búsqueda: `/?q=nike`.
+
+## Primera publicación en Cloudflare
 
 ```bash
-npm run nuevo -- "Título del video" "C:\ruta\al\video.mp4"
+npx wrangler login
 ```
 
-Esto comprime el video (menos de 25 MB, lado largo 1280px), saca el poster, detecta el formato y si tiene audio, y crea `src/content/prompts/titulo-del-video.md` en **borrador**.
+```bash
+npm run deploy
+```
 
-Después:
+La primera vez, wrangler crea la base de datos D1 (`biblioteca`) y el bucket R2 (`biblioteca-media`) en tu cuenta y aplica el esquema. R2 requiere tenerlo activado en tu cuenta de Cloudflare (tiene un plan gratis generoso).
 
-1. Abre el `.md`, pon la categoría, las herramientas y pega tus prompts.
-2. Cambia `borrador: true` a `borrador: false`.
-3. `git add . && git commit -m "Título del video" && git push`
+Después, crea la clave del panel y guarda el link que te imprime:
 
-Cloudflare publica solo en un par de minutos. La página queda en `/p/titulo-del-video/`; ese es el link para compartir en TikTok.
+```bash
+npm run clave
+```
 
-### Campos de cada entrada
-
-| Campo | Qué es |
-| --- | --- |
-| `titulo` | Nombre que aparece en la web |
-| `fecha` | `2026-10-06`. Ordena la biblioteca, lo más nuevo primero |
-| `categoria` | Tipo de video: `Abstracto`, `Logos`, `Personajes`... Es el filtro de la biblioteca; inventa las que quieras |
-| `herramientas` | `["Midjourney v7", "Kling 2.5"]`. Aparecen en la página del prompt como "Hecho con" |
-| `video` | `/videos/archivo.mp4` o una URL completa (por ejemplo, R2) |
-| `poster` | Imagen fija mientras carga el video |
-| `formato` | `9:16`, `16:9`, `1:1` o `4:5`. Los `16:9` ocupan doble ancho |
-| `sonido` | `true` muestra el botón de sonido |
-| `tiktok` | Link al video en TikTok (opcional) |
-| `prompts` | Lista de `etiqueta` + `texto`. Puedes poner los que quieras (Imagen, Video, Negativo...) |
-| `borrador` | `true` = solo se ve en local con `npm run dev` |
-
-El texto debajo del segundo `---` son las notas (markdown), y es opcional.
-
-## Animaciones de la portada
-
-La intro (video dentro de las letras, zoom a través de la "k", manifiesto) y la galería horizontal están en `src/scripts/inicio.ts` (GSAP + ScrollTrigger + Lenis). El video de la intro es siempre la entrada vertical más reciente.
-
-Si el sistema tiene activado "reducir movimiento" (en Windows: *Configuración → Accesibilidad → Efectos visuales → Efectos de animación* apagado), la página se muestra estática a propósito. Para verlas igual: abre la web con `?movimiento=1`; `?movimiento=0` lo devuelve a lo normal.
+Cuando tengas el dominio final, ponlo en `astro.config.mjs` (`site`) y corre `SITE_URL=https://tu-dominio npm run clave` si quieres el link con ese dominio.
 
 ## Trabajar en local
 
 ```bash
 npm install
+```
+
+```bash
+npm run ejemplos
+```
+
+```bash
 npm run dev
 ```
 
-Abre http://localhost:4321.
+`npm run ejemplos` carga 4 prompts de ejemplo en la base y el almacenamiento **locales** (no toca producción). La clave local del panel está en `.dev.vars` (no se sube al repo): abre `http://localhost:4321/panel#clave=<esa clave>`.
 
-## Publicación (Cloudflare)
+## Animaciones de la portada
 
-El proyecto es un Worker con assets estáticos (`wrangler.jsonc` sirve la carpeta `dist/`).
+La intro (video dentro de "itskeo", zoom a través de la "k", manifiesto) y la galería horizontal están en `src/scripts/inicio.ts` (GSAP + ScrollTrigger + Lenis). El video de la intro es siempre el prompt vertical más reciente.
 
-- **Automático:** en Cloudflare, *Workers & Pages → Create → Import a repository*, elige `biblioteca`. Build command `npm run build`, deploy command `npx wrangler deploy`. Cada `git push` publica.
-- **Manual:** `npm run deploy` (pide `npx wrangler login` la primera vez).
+Si el sistema tiene activado "reducir movimiento" (en Windows: *Configuración → Accesibilidad → Efectos visuales → Efectos de animación* apagado), la página se muestra estática a propósito. Para verlas igual: `?movimiento=1` (y `?movimiento=0` para volver).
 
-Cuando tengas el dominio final, cámbialo en `astro.config.mjs` (`site`) para que las vistas previas al compartir salgan bien.
+## Estructura
 
-### Videos pesados
-
-Cloudflare acepta archivos de hasta 25 MB. `npm run nuevo` comprime para quedar debajo. Si algún día hay muchos videos o son largos, súbelos a un bucket de R2 y pon la URL completa en `video:`.
-
-## Ejemplos
-
-Las entradas `espiral-menta`, `fractal-infinito`, `colonia` y `alfombra-cuantica` son de ejemplo, con videos generados con ffmpeg. Bórralas (el `.md`, el video y el poster) cuando subas los tuyos.
+| Ruta | Qué es |
+| --- | --- |
+| `src/pages/index.astro` | Portada: intro, lo más reciente y la biblioteca con buscador |
+| `src/pages/p/[id].astro` | Página de cada prompt |
+| `src/pages/panel.astro` + `src/scripts/panel.ts` | Panel privado |
+| `src/pages/api/` | API del panel (entradas y subidas), protegida con la clave |
+| `src/pages/media/[...clave].ts` | Sirve videos y portadas desde R2 (con soporte de Range) |
+| `src/lib/db.ts` | Lectura y escritura en D1 |
+| `migrations/` | Esquema de la base de datos |
+| `ejemplos/` | Videos y datos de ejemplo para desarrollo local |

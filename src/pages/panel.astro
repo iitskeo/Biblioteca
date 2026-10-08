@@ -1,0 +1,679 @@
+---
+// Panel privado para subir y editar prompts. No tiene enlaces desde la web pública ni se indexa.
+// Toda la seguridad está en la API: sin la clave correcta, nada se puede leer, subir ni borrar.
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+
+Astro.response.headers.set('cache-control', 'no-store');
+Astro.response.headers.set('referrer-policy', 'no-referrer');
+Astro.response.headers.set('x-robots-tag', 'noindex, nofollow');
+
+const hoy = new Date().toISOString().slice(0, 10);
+---
+
+<Base titulo="Panel" privada>
+  <div class="panel wrap">
+    <!-- Sin clave: pedirla -->
+    <section class="acceso" data-acceso hidden>
+      <h1>Tu panel</h1>
+      <p>Abre el link privado que te dio <code>npm run clave</code>, o pega la clave aquí. Se recuerda en este navegador.</p>
+      <form class="acceso__form" data-form-clave>
+        <div class="campo">
+          <label for="clave">Clave del panel</label>
+          <input id="clave" type="password" autocomplete="off" spellcheck="false" required />
+        </div>
+        <p class="aviso aviso--error" data-error-clave role="alert" hidden></p>
+        <button class="btn btn--primario" type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <!-- Con clave: editor + lista -->
+    <section class="escritorio" data-escritorio hidden>
+      <div class="escritorio__cabeza">
+        <h1 data-titulo-editor>Nuevo prompt</h1>
+        <button type="button" class="btn btn--secundario" data-cancelar hidden><Icon name="x" /> Cancelar edición</button>
+      </div>
+
+      <form class="editor" data-editor novalidate>
+        <div class="editor__video">
+          <label class="zona" data-zona>
+            <input type="file" accept="video/mp4,video/webm,video/quicktime,.mp4,.mov,.webm" class="sr-only" data-archivo />
+            <span class="zona__vacia" data-zona-vacia>
+              <strong>Arrastra tu video aquí</strong>
+              <span>o toca para elegirlo. MP4, MOV o WebM.</span>
+            </span>
+            <video class="zona__vista" data-vista muted playsinline loop hidden></video>
+          </label>
+
+          <div class="portada" data-portada hidden>
+            <label for="cuadro">Portada: mueve para elegir el cuadro</label>
+            <input id="cuadro" type="range" min="0" max="1000" value="80" data-cuadro />
+          </div>
+
+          <p class="dato" data-info-video hidden></p>
+
+          <label class="check" data-opcion-optimizar hidden>
+            <input type="checkbox" data-optimizar checked />
+            <span>Optimizar para web <small>Más liviano y carga más rápido. Recomendado.</small></span>
+          </label>
+          <label class="check">
+            <input type="checkbox" data-sonido />
+            <span>El video tiene sonido <small>Muestra el botón de audio en su página.</small></span>
+          </label>
+        </div>
+
+        <div class="editor__campos">
+          <div class="campo">
+            <label for="titulo">Título</label>
+            <input id="titulo" type="text" maxlength="120" required data-titulo placeholder="Ej. Zapatilla de cristal" />
+          </div>
+
+          <fieldset class="prompts">
+            <legend>Prompts</legend>
+            <div class="prompts__lista" data-prompts></div>
+            <button type="button" class="btn btn--secundario btn--chico" data-agregar-prompt>Agregar otro prompt</button>
+          </fieldset>
+
+          <div class="campo">
+            <label for="herramientas">Herramientas</label>
+            <input id="herramientas" type="text" data-herramientas placeholder="Midjourney v7, Kling 2.5" aria-describedby="herramientas-ayuda" />
+            <p class="ayuda" id="herramientas-ayuda">Sepáralas con comas.</p>
+            <div class="sugerencias" data-sugerencias hidden></div>
+          </div>
+
+          <div class="campo">
+            <label for="tiktok">Link del TikTok <span class="opcional">opcional</span></label>
+            <input id="tiktok" type="url" inputmode="url" data-tiktok placeholder="https://www.tiktok.com/@itskeo5/video/…" />
+          </div>
+
+          <div class="campo">
+            <label for="notas">Cómo lo hice <span class="opcional">opcional</span></label>
+            <textarea id="notas" rows="4" maxlength="4000" data-notas placeholder="Trucos, qué ajustaste, qué no funcionó…"></textarea>
+          </div>
+
+          <div class="campo campo--corto">
+            <label for="fecha">Fecha</label>
+            <input id="fecha" type="date" value={hoy} data-fecha />
+          </div>
+
+          <div class="acciones">
+            <button type="submit" class="btn btn--primario" data-publicar>Publicar</button>
+            <button type="button" class="btn btn--secundario" data-guardar-borrador>Guardar como borrador</button>
+          </div>
+
+          <div class="progreso" data-progreso hidden>
+            <div class="progreso__barra"><span data-progreso-relleno></span></div>
+            <p data-progreso-texto>Preparando…</p>
+          </div>
+          <p class="aviso aviso--error" data-error role="alert" hidden></p>
+
+          <div class="listo" data-listo hidden>
+            <p class="listo__titulo" data-listo-titulo>Publicado.</p>
+            <a class="listo__link" data-listo-link target="_blank" rel="noopener"></a>
+            <div class="listo__acciones">
+              <button type="button" class="btn btn--primario" data-copiar-link><Icon name="copy" /> Copiar link</button>
+              <button type="button" class="btn btn--secundario" data-otro>Subir otro</button>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <section class="lista" aria-labelledby="lista-titulo">
+        <h2 id="lista-titulo">Tus prompts <span class="lista__conteo" data-lista-conteo></span></h2>
+        <ul class="lista__filas" data-lista></ul>
+        <p class="lista__vacia" data-lista-vacia hidden>Todavía no hay nada. El primero va arriba.</p>
+      </section>
+
+      <button type="button" class="salir" data-salir>Olvidar la clave en este navegador</button>
+    </section>
+  </div>
+
+  <template data-tpl-prompt>
+    <div class="prompt-campo">
+      <div class="prompt-campo__cabeza">
+        <input type="text" class="prompt-campo__etiqueta" maxlength="40" list="etiquetas" aria-label="Tipo de prompt" value="Prompt" />
+        <button type="button" class="quitar" aria-label="Quitar este prompt"><Icon name="x" /></button>
+      </div>
+      <textarea class="prompt-campo__texto" rows="5" maxlength="8000" aria-label="Texto del prompt" placeholder="Pega el prompt tal cual lo usaste"></textarea>
+    </div>
+  </template>
+  <datalist id="etiquetas">
+    <option value="Imagen"></option>
+    <option value="Video"></option>
+    <option value="Negativo"></option>
+    <option value="Audio"></option>
+    <option value="Estilo"></option>
+  </datalist>
+</Base>
+
+<script>
+  import '../scripts/panel';
+</script>
+
+<style>
+  .panel {
+    padding-block: clamp(32px, 5vw, 64px) 96px;
+  }
+  h1 {
+    font-size: clamp(2.25rem, 4vw, 3.25rem);
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1;
+  }
+
+  /* ---------- Acceso ---------- */
+  .acceso {
+    display: grid;
+    gap: 16px;
+    max-width: 460px;
+    padding-top: 8vh;
+  }
+  .acceso > p {
+    color: var(--muted);
+  }
+  .acceso code {
+    font-family: var(--mono);
+    font-size: 0.875em;
+    color: var(--text);
+  }
+  .acceso__form {
+    display: grid;
+    gap: 16px;
+    margin-top: 8px;
+    justify-items: start;
+  }
+  .acceso__form .campo {
+    width: 100%;
+  }
+
+  /* ---------- Escritorio ---------- */
+  .escritorio__cabeza {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .editor {
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+    gap: clamp(24px, 4vw, 56px);
+    align-items: start;
+  }
+  .editor__video {
+    position: sticky;
+    top: calc(var(--nav-h) + 24px);
+    display: grid;
+    gap: 16px;
+  }
+  .editor__campos {
+    display: grid;
+    gap: 24px;
+    max-width: 720px;
+  }
+
+  /* Zona para soltar el video */
+  .zona {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 9 / 16;
+    max-height: 70dvh;
+    border-radius: var(--radius);
+    border: 1.5px dashed var(--line);
+    background: var(--bg-2);
+    overflow: hidden;
+    cursor: pointer;
+    transition:
+      border-color 200ms ease,
+      background-color 200ms ease;
+  }
+  .zona[data-con-video] {
+    border-style: solid;
+    background: var(--surface);
+  }
+  .zona[data-arrastrando] {
+    border-color: var(--accent);
+    background: color-mix(in oklab, var(--accent) 8%, var(--bg-2));
+  }
+  .zona:focus-within {
+    border-color: var(--accent);
+  }
+  .zona__vacia {
+    display: grid;
+    gap: 6px;
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .zona__vacia strong {
+    font-family: var(--display);
+    font-size: 1.25rem;
+    font-weight: 650;
+    color: var(--text);
+  }
+  .zona__vista {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+  }
+  .zona__vista[hidden],
+  .zona__vacia[hidden] {
+    display: none;
+  }
+
+  .portada {
+    display: grid;
+    gap: 8px;
+  }
+  .portada label,
+  .campo label,
+  .prompts legend {
+    font-weight: 550;
+  }
+  input[type='range'] {
+    width: 100%;
+  }
+  .dato {
+    font-size: 0.875rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .check {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    cursor: pointer;
+  }
+  .check input {
+    width: 18px;
+    height: 18px;
+    margin: 3px 0 0;
+    flex: none;
+  }
+  .check small {
+    display: block;
+    color: var(--muted);
+    font-size: 0.8125rem;
+  }
+
+  /* Campos */
+  .campo {
+    display: grid;
+    gap: 8px;
+  }
+  .campo--corto {
+    max-width: 240px;
+  }
+  .opcional {
+    margin-left: 6px;
+    font-weight: 400;
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+  .ayuda {
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+  input[type='text'],
+  input[type='url'],
+  input[type='date'],
+  input[type='password'],
+  textarea {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    color: var(--text);
+    font: inherit;
+    transition:
+      border-color 200ms ease,
+      box-shadow 200ms ease;
+  }
+  textarea {
+    resize: vertical;
+    line-height: 1.55;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted);
+  }
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent);
+  }
+  [aria-invalid='true'] {
+    border-color: #f2777a !important;
+  }
+
+  .sugerencias {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .sugerencias[hidden] {
+    display: none;
+  }
+  /* Los chips se crean con JavaScript: necesitan estilos globales. */
+  .sugerencias :global(.sugerencia) {
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: none;
+    color: var(--text);
+    font-size: 0.8125rem;
+    transition:
+      background-color 200ms ease,
+      transform 160ms var(--ease-out);
+  }
+  .sugerencias :global(.sugerencia:active) {
+    transform: scale(0.97);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .sugerencias :global(.sugerencia:hover) {
+      background: var(--surface);
+    }
+  }
+
+  .prompts {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+  .prompts legend {
+    padding: 0;
+    margin-bottom: 8px;
+  }
+  .prompts__lista {
+    display: grid;
+    gap: 12px;
+  }
+  .prompt-campo {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+  }
+  .prompt-campo__cabeza {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .prompt-campo__etiqueta {
+    max-width: 220px;
+    min-height: 40px !important;
+    padding-block: 8px !important;
+    font-weight: 600 !important;
+    background: var(--surface) !important;
+  }
+  .prompt-campo__texto {
+    font-family: var(--mono) !important;
+    font-size: 0.875rem !important;
+    background: var(--surface) !important;
+  }
+  .quitar {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin-left: auto;
+    border-radius: 999px;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    transition:
+      background-color 200ms ease,
+      transform 160ms var(--ease-out);
+  }
+  .quitar:active {
+    transform: scale(0.94);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .quitar:hover {
+      background: var(--surface);
+      color: var(--text);
+    }
+  }
+  .prompts__lista > .prompt-campo:only-child .quitar {
+    visibility: hidden;
+  }
+  .btn--chico {
+    justify-self: start;
+    height: 40px;
+    padding-inline: 16px;
+    font-size: 0.875rem;
+  }
+
+  .acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 8px;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /* Progreso de una subida real (no es decoración). */
+  .progreso {
+    display: grid;
+    gap: 8px;
+  }
+  .progreso[hidden] {
+    display: none;
+  }
+  .progreso__barra {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .progreso__barra span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+    transform-origin: left;
+    transform: scaleX(0);
+    transition: transform 200ms var(--ease-out);
+  }
+  .progreso p {
+    font-size: 0.875rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .aviso {
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 0.9375rem;
+  }
+  .aviso[hidden] {
+    display: none;
+  }
+  .aviso--error {
+    background: color-mix(in oklab, #f2777a 14%, var(--bg-2));
+    color: var(--text);
+  }
+
+  .listo {
+    display: grid;
+    gap: 12px;
+    padding: 20px;
+    border-radius: var(--radius);
+    background: color-mix(in oklab, var(--accent) 12%, var(--bg-2));
+    animation: aparecer 300ms var(--ease-out);
+  }
+  .listo[hidden] {
+    display: none;
+  }
+  .listo__titulo {
+    font-family: var(--display);
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .listo__link {
+    font-family: var(--mono);
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-underline-offset: 3px;
+  }
+  .listo__acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  /* ---------- Lista ---------- */
+  .lista {
+    margin-top: clamp(64px, 9vw, 112px);
+  }
+  .lista h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+  .lista__conteo {
+    font-family: var(--font);
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .lista__filas {
+    display: grid;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .lista__vacia {
+    margin-top: 16px;
+    color: var(--muted);
+  }
+  .lista__vacia[hidden] {
+    display: none;
+  }
+  .lista :global(.fila) {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 12px 10px 10px;
+    border-radius: var(--radius);
+    background: var(--bg-2);
+  }
+  .lista :global(.fila__mini) {
+    width: 48px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  .lista :global(.fila__titulo) {
+    font-family: var(--display);
+    font-weight: 650;
+    letter-spacing: -0.015em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lista :global(.fila__meta) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: center;
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+  .lista :global(.fila__borrador) {
+    padding: 1px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--text);
+  }
+  .lista :global(.fila__acciones) {
+    display: flex;
+    gap: 6px;
+  }
+  .lista :global(.fila__accion) {
+    height: 36px;
+    padding-inline: 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: none;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition:
+      background-color 200ms ease,
+      border-color 200ms ease,
+      transform 160ms var(--ease-out);
+  }
+  .lista :global(.fila__accion:active) {
+    transform: scale(0.97);
+  }
+  .lista :global(.fila__accion[data-confirmar]) {
+    border-color: #f2777a;
+    color: #f2777a;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .lista :global(.fila__accion:hover) {
+      background: var(--surface);
+    }
+  }
+
+  .salir {
+    margin-top: 48px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 0.875rem;
+    color: var(--muted);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  @media (max-width: 860px) {
+    .editor {
+      grid-template-columns: 1fr;
+    }
+    .editor__video {
+      position: static;
+      max-width: 360px;
+    }
+  }
+  @media (max-width: 600px) {
+    .lista :global(.fila) {
+      grid-template-columns: 48px minmax(0, 1fr);
+    }
+    .lista :global(.fila__acciones) {
+      grid-column: 1 / -1;
+      flex-wrap: wrap;
+    }
+  }
+</style>

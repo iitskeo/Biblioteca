@@ -4,8 +4,7 @@
 //  1. Entrada: las letras de "itskeo" suben desde su máscara y el video aparece dentro.
 //  2. Scroll en la intro: la cámara atraviesa la "k", el video queda a pantalla completa
 //     y el manifiesto se ilumina palabra por palabra.
-//  3. "Lo más reciente": en escritorio la sección se fija y la pista se desliza en horizontal.
-//  4. Biblioteca: las tarjetas entran escalonadas al aparecer.
+//  3. "Lo más reciente" y la biblioteca entran suaves al aparecer.
 
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -24,7 +23,6 @@ if (raiz.classList.contains('anim')) {
 
   entrada();
   intro();
-  reciente();
   biblioteca();
 
   let espera: number | undefined;
@@ -86,42 +84,6 @@ function intro() {
     .fromTo('[data-manifiesto]', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.08 }, 0.32)
     .to('[data-manifiesto] span', { opacity: 1, duration: 0.04, stagger: 0.024 }, 0.36)
     .to({}, { duration: 0.1 });
-}
-
-function reciente() {
-  const mm = gsap.matchMedia();
-  mm.add('(min-width: 768px)', () => {
-    const seccion = document.querySelector<HTMLElement>('[data-reciente]');
-    const pista = document.querySelector<HTMLElement>('[data-pista]');
-    if (!seccion || !pista) return;
-
-    const distancia = () => Math.max(0, pista.scrollWidth - window.innerWidth);
-    const medir = () => seccion.style.setProperty('--recorrido', `${distancia()}px`);
-    medir();
-    if (distancia() < 40) return;
-
-    // Antes de cada recálculo, ajustar el alto de la sección al ancho real de la pista.
-    ScrollTrigger.addEventListener('refreshInit', medir);
-
-    const tween = gsap.to(pista, {
-      x: () => -distancia(),
-      ease: 'none',
-      scrollTrigger: {
-        trigger: seccion,
-        start: 'top top',
-        end: 'bottom bottom',
-        scrub: 1,
-        invalidateOnRefresh: true,
-      },
-    });
-
-    return () => {
-      ScrollTrigger.removeEventListener('refreshInit', medir);
-      seccion.style.removeProperty('--recorrido');
-      tween.scrollTrigger?.kill();
-      tween.kill();
-    };
-  });
 }
 
 // fromTo con valores finales explícitos: si una entrada se dispara dos veces, nunca se queda a medias.

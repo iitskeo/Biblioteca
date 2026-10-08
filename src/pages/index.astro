@@ -4,15 +4,15 @@ import Icon from '../components/Icon.astro';
 import Tarjeta from '../components/Tarjeta.astro';
 import Paginacion from '../components/Paginacion.astro';
 import { pagina, POR_PAGINA, principal as buscarPrincipal, recientes as buscarRecientes } from '../lib/db';
-import { aspecto, esHorizontal, media } from '../lib/site';
+import { aspecto, esHorizontal, fecha, media } from '../lib/site';
 
 // La biblioteca va en páginas de 24 (?pagina=2). Con ?q= viene filtrada.
 // Los links de búsqueda y de página funcionan sin JavaScript; con JavaScript solo cambia la rejilla.
 const q = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 120);
 const numero = Math.max(1, Math.floor(Number(Astro.url.searchParams.get('pagina')) || 1));
-const [principal, recientes, todas, filtradas] = await Promise.all([
+const [principal, [ultimo], todas, filtradas] = await Promise.all([
   buscarPrincipal(),
-  buscarRecientes(6),
+  buscarRecientes(1),
   pagina({ cantidad: q || numero > 1 ? 1 : undefined }),
   q || numero > 1 ? pagina({ q, desde: (numero - 1) * POR_PAGINA }) : null,
 ]);
@@ -83,45 +83,29 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
   </section>
 
   {
-    recientes.length > 0 && (
-      <section class="reciente" data-reciente aria-labelledby="reciente-titulo">
-        <div class="reciente__fijo">
-          <div class="reciente__pista" data-pista>
-            <div class="reciente__cabeza">
-              <h2 id="reciente-titulo">Lo más reciente</h2>
-              <p>Lo último que subí a TikTok, con el prompt listo para copiar.</p>
-            </div>
-            {recientes.map((e) => (
-              <a
-                class:list={['reciente__item', { 'reciente__item--ancho': esHorizontal(e.formato) }]}
-                href={`/p/${e.id}/`}
-                data-hover
-              >
-                <div class="reciente__media" style={`aspect-ratio: ${aspecto(e.formato)}`}>
-                  <video
-                    data-play="auto"
-                    muted
-                    loop
-                    playsinline
-                    preload="metadata"
-                    poster={media(e.poster)}
-                    aria-hidden="true"
-                    tabindex="-1"
-                  >
-                    <source src={media(e.video)} type="video/mp4" />
-                  </video>
-                </div>
-                <div class="reciente__info">
-                  <h3>
-                    {e.titulo}
-                    <Icon name="arrowUpRight" />
-                  </h3>
-                  {e.herramientas.length > 0 && <p>{e.herramientas.join(' + ')}</p>}
-                </div>
-              </a>
-            ))}
-          </div>
+    ultimo && (
+      <section
+        class:list={['reciente wrap', { 'reciente--ancho': esHorizontal(ultimo.formato) }]}
+        aria-labelledby="reciente-titulo"
+        data-revelar
+      >
+        <div class="reciente__texto">
+          <h2 id="reciente-titulo">Lo más reciente</h2>
+          <p class="reciente__fecha">
+            <time datetime={ultimo.fecha}>{fecha(ultimo.fecha)}</time>
+          </p>
+          <h3 class="reciente__titulo">{ultimo.titulo}</h3>
+          {ultimo.herramientas.length > 0 && <p class="reciente__hecho">Hecho con {ultimo.herramientas.join(' + ')}</p>}
+          {ultimo.prompts[0] && <p class="reciente__prompt">{ultimo.prompts[0].texto}</p>}
+          <a class="btn btn--primario" href={`/p/${ultimo.id}/`}>
+            Ver el prompt <Icon name="arrowRight" />
+          </a>
         </div>
+        <a class="reciente__media" href={`/p/${ultimo.id}/`} style={`aspect-ratio: ${aspecto(ultimo.formato)}`} aria-label={`Ver ${ultimo.titulo}`}>
+          <video data-play="auto" muted loop playsinline preload="metadata" poster={media(ultimo.poster)} aria-hidden="true" tabindex="-1">
+            <source src={media(ultimo.video)} type="video/mp4" />
+          </video>
+        </a>
       </section>
     )
   }
@@ -362,134 +346,91 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
   }
 
   /* ================= Lo más reciente ================= */
+  /* Un solo video destacado: texto a la izquierda, video a la derecha (apilado en celular). */
   .reciente {
-    position: relative;
-    padding-block: clamp(80px, 12vw, 140px) 24px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: clamp(32px, 6vw, 96px);
+    padding-top: clamp(80px, 12vw, 140px);
   }
-  .reciente__pista {
-    display: flex;
-    align-items: flex-end;
-    gap: clamp(16px, 2vw, 28px);
-    padding-inline: var(--gutter);
-    /* Con scroll horizontal la fila recorta lo que sobresale: espacio para que la tarjeta suba al pasar el mouse. */
-    padding-block: 16px 8px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-  }
-  .reciente__pista::-webkit-scrollbar {
-    display: none;
-  }
-  .reciente__cabeza {
-    flex: none;
-    width: min(30rem, 78vw);
-    align-self: center;
-    padding-right: clamp(16px, 4vw, 64px);
-    scroll-snap-align: start;
-  }
-  .reciente__cabeza h2 {
+  .reciente h2 {
     font-size: clamp(2.75rem, 6vw, 5.5rem);
     font-weight: 700;
     letter-spacing: -0.04em;
     line-height: 0.95;
   }
-  .reciente__cabeza p {
-    margin-top: 20px;
-    max-width: 30ch;
+  .reciente__texto {
+    display: grid;
+    justify-items: start;
+    gap: 14px;
+    max-width: 34rem;
+  }
+  .reciente__fecha {
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 0.8125rem;
     color: var(--muted);
   }
-  .reciente__item {
-    flex: none;
-    scroll-snap-align: start;
-    width: calc(min(46svh, 440px) * 9 / 16);
+  .reciente__titulo {
+    font-family: var(--display);
+    font-size: clamp(1.5rem, 2.4vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
   }
-  .reciente__item--ancho {
-    width: calc(min(34svh, 330px) * 16 / 9);
+  .reciente__hecho {
+    color: var(--muted);
   }
-  .reciente__item:nth-child(odd) {
-    margin-bottom: 48px;
+  .reciente__prompt {
+    margin: 4px 0 8px;
+    padding: 0 16px;
+    border-block: 14px solid var(--bg-2);
+    border-radius: var(--radius-sm);
+    background: var(--bg-2);
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--muted);
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .reciente__media {
+    display: block;
+    height: min(70svh, 620px);
+    max-width: 100%;
     overflow: hidden;
     padding: var(--marco);
     border: 1px solid var(--marco-borde);
     border-radius: var(--radius);
     background: var(--surface);
+    box-shadow: var(--media-shadow);
     transition:
       transform 400ms var(--ease-out),
       border-color 200ms ease;
+  }
+  .reciente--ancho .reciente__media {
+    height: auto;
+    width: min(46vw, 640px);
   }
   .reciente__media video {
     width: 100%;
     height: 100%;
     border-radius: calc(var(--radius) - var(--marco));
     object-fit: cover;
-    transition: transform 600ms var(--ease-out);
-  }
-  .reciente__info {
-    padding-top: 14px;
-  }
-  .reciente__info p {
-    margin-top: 2px;
-    font-size: 0.875rem;
-    color: var(--muted);
-  }
-  .reciente__info h3 {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--display);
-    font-size: 1.1875rem;
-    font-weight: 650;
-    letter-spacing: -0.02em;
-  }
-  .reciente__info h3 :global(.icon) {
-    color: var(--accent);
-    opacity: 0;
-    transform: translate(-4px, 4px);
-    transition:
-      opacity 200ms ease,
-      transform 250ms var(--ease-out);
   }
   @media (hover: hover) and (pointer: fine) {
-    .reciente__item:hover .reciente__media {
-      transform: translateY(-6px);
-    }
-    .reciente__item:hover .reciente__media {
+    .reciente__media:hover {
+      transform: translateY(-4px);
       border-color: color-mix(in oklab, var(--accent) 45%, transparent);
     }
-    .reciente__item:hover h3 :global(.icon) {
-      opacity: 1;
-      transform: none;
-    }
   }
-  .reciente__item:active .reciente__media {
+  .reciente__media:active {
     transform: scale(0.98);
     transition-duration: 160ms;
-  }
-
-  /* Escritorio con animaciones: la sección mide una pantalla más el recorrido horizontal
-     (--recorrido lo calcula inicio.ts) y la pista se desliza mientras la escena está pegada. */
-  @media (min-width: 768px) {
-    :global(.anim) .reciente {
-      height: calc(100svh + var(--recorrido, 0px));
-      padding-block: 0;
-    }
-    :global(.anim) .reciente__fijo {
-      position: sticky;
-      top: 0;
-      height: 100svh;
-      display: flex;
-      align-items: center;
-      padding-top: var(--nav-h);
-      overflow: hidden;
-    }
-
-    :global(.anim) .reciente__pista {
-      overflow: visible;
-      scroll-snap-type: none;
-      will-change: transform;
-    }
   }
 
   /* ================= Biblioteca ================= */
@@ -612,14 +553,16 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     .intro__mascara {
       padding-bottom: 30svh;
     }
-    .reciente__item {
-      width: min(52vw, 240px);
+    .reciente,
+    .reciente--ancho {
+      grid-template-columns: 1fr;
     }
-    .reciente__item--ancho {
-      width: min(78vw, 360px);
+    .reciente__media {
+      justify-self: center;
+      height: min(64svh, 520px);
     }
-    .reciente__item:nth-child(odd) {
-      margin-bottom: 0;
+    .reciente--ancho .reciente__media {
+      width: 100%;
     }
     .rejilla {
       grid-template-columns: repeat(2, minmax(0, 1fr));

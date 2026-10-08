@@ -68,7 +68,7 @@ npm run dev
 
 ## Animaciones de la portada
 
-La intro (video dentro de "itskeo", zoom a través de la "k", manifiesto) y la galería horizontal están en `src/scripts/inicio.ts` (GSAP + ScrollTrigger + Lenis). El video de la intro es siempre el prompt vertical más reciente.
+La intro (video dentro de "itskeo", zoom a través de la "k", manifiesto) y la entrada suave de las secciones están en `src/scripts/inicio.ts` (GSAP + ScrollTrigger + Lenis). El video de la intro es siempre el prompt vertical más reciente.
 
 Si el sistema tiene activado "reducir movimiento" (en Windows: *Configuración → Accesibilidad → Efectos visuales → Efectos de animación* apagado), la página se muestra estática a propósito. Para verlas igual: `?movimiento=1` (y `?movimiento=0` para volver).
 

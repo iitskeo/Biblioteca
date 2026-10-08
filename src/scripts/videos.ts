@@ -37,18 +37,25 @@ const observador = new IntersectionObserver(
   { threshold: [0, 0.2, 0.35, 0.6] },
 );
 
-for (const v of document.querySelectorAll<HTMLVideoElement>('video[data-play]')) {
-  observador.observe(v);
+// Activa los videos dentro de `zona`. Se llama al cargar y cada vez que llegan tarjetas nuevas.
+export function observarVideos(zona: ParentNode = document) {
+  for (const v of zona.querySelectorAll<HTMLVideoElement>('video[data-play]')) {
+    if (v.dataset.observado) continue;
+    v.dataset.observado = '1';
+    observador.observe(v);
 
-  if (v.dataset.play === 'hover') {
-    const anfitrion = v.closest<HTMLElement>('[data-hover]') ?? v;
-    anfitrion.addEventListener('pointerenter', (e) => {
-      if (e.pointerType === 'mouse') reproducir(v);
-    });
-    anfitrion.addEventListener('pointerleave', (e) => {
-      if (e.pointerType === 'mouse') v.pause();
-    });
-    anfitrion.addEventListener('focusin', () => reproducir(v));
-    anfitrion.addEventListener('focusout', () => v.pause());
+    if (v.dataset.play === 'hover') {
+      const anfitrion = v.closest<HTMLElement>('[data-hover]') ?? v;
+      anfitrion.addEventListener('pointerenter', (e) => {
+        if (e.pointerType === 'mouse') reproducir(v);
+      });
+      anfitrion.addEventListener('pointerleave', (e) => {
+        if (e.pointerType === 'mouse') v.pause();
+      });
+      anfitrion.addEventListener('focusin', () => reproducir(v));
+      anfitrion.addEventListener('focusout', () => v.pause());
+    }
   }
 }
+
+observarVideos();

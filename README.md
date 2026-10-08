@@ -20,9 +20,15 @@ El panel optimiza el video en tu navegador (720p, H.264) antes de subirlo cuando
 - El navegador la recuerda después de entrar una vez. "Olvidar la clave en este navegador" la borra.
 - **Si el link se filtra**, genera otra clave con `npm run clave`: el link anterior deja de servir al instante.
 
-## Búsqueda
+## Búsqueda y páginas
 
-No hay categorías: se busca por palabras dentro del texto de los prompts (y el título y las herramientas). "nike" muestra los que dicen nike; "16:9" los que tienen 16:9 escrito. Cada resultado muestra el pedazo del prompt donde aparece la palabra, resaltada. Se puede compartir una búsqueda: `/?q=nike`.
+No hay categorías: se busca por palabras dentro del texto de los prompts (y el título y las herramientas), sin importar acentos. "nike" muestra los que dicen nike; "16:9" los que tienen 16:9 escrito; varias palabras tienen que aparecer todas. Cada resultado muestra el pedazo del prompt donde aparece la palabra, resaltada.
+
+La biblioteca va en **páginas numeradas de 24**, lo más nuevo primero. La búsqueda la hace el servidor sobre todos los prompts, así que funciona igual con 10 que con 1000, y la página nunca carga más de 24 videos a la vez. Se pueden compartir búsquedas y páginas: `/?q=nike`, `/?pagina=3`.
+
+## La intro
+
+En el panel, "Usar en la intro de la portada" elige qué video va dentro de las letras (uno a la vez). Sin marcar ninguno, se usa el vertical más reciente. Dentro de las letras el video va desenfocado y teñido de menta para que se lea siempre; se aclara al atravesar la "k".
 
 ## Primera publicación en Cloudflare
 

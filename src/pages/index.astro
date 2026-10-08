@@ -2,20 +2,27 @@
 import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import Tarjeta from '../components/Tarjeta.astro';
-import { listar } from '../lib/db';
+import Paginacion from '../components/Paginacion.astro';
+import { pagina, POR_PAGINA, principal as buscarPrincipal, recientes as buscarRecientes } from '../lib/db';
 import { aspecto, esHorizontal, media } from '../lib/site';
 
-const entradas = await listar();
-// Video de la intro: el marcado en el panel; si no hay, el vertical más reciente; si no, el más reciente.
-const principal = entradas.find((e) => e.portada) ?? entradas.find((e) => !esHorizontal(e.formato)) ?? entradas[0];
-const recientes = entradas.slice(0, 6);
-const total = entradas.length;
-
-// Texto completo de cada prompt, para mostrar el fragmento donde aparece lo que se busca.
-// "<" escapado para que ningún prompt pueda cerrar la etiqueta <script>.
-const textos = JSON.stringify(
-  Object.fromEntries(entradas.map((e) => [e.id, e.prompts.map((p) => p.texto).join('\n\n')])),
-).replace(/</g, '\\u003c');
+// La biblioteca va en páginas de 24 (?pagina=2). Con ?q= viene filtrada.
+// Los links de búsqueda y de página funcionan sin JavaScript; con JavaScript solo cambia la rejilla.
+const q = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 120);
+const numero = Math.max(1, Math.floor(Number(Astro.url.searchParams.get('pagina')) || 1));
+const [principal, recientes, todas, filtradas] = await Promise.all([
+  buscarPrincipal(),
+  buscarRecientes(6),
+  pagina({ cantidad: q || numero > 1 ? 1 : undefined }),
+  q || numero > 1 ? pagina({ q, desde: (numero - 1) * POR_PAGINA }) : null,
+]);
+const totalGeneral = todas.total;
+let primera = filtradas ?? todas;
+const totalPaginas = Math.max(1, Math.ceil(primera.total / POR_PAGINA));
+// Página que ya no existe (se borraron prompts, link viejo): mostrar la última.
+if (!primera.entradas.length && numero > totalPaginas) {
+  primera = await pagina({ q, desde: (totalPaginas - 1) * POR_PAGINA });
+}
 
 const letras = [...'itskeo'];
 const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos, completos y listos para copiar.'.split(' ');
@@ -121,10 +128,10 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
 
   <section id="biblioteca" class="biblio wrap" aria-labelledby="biblio-titulo">
     <div class="biblio__cabeza" data-revelar>
-      <h2 id="biblio-titulo">Todos los prompts <span class="conteo" data-conteo>{total}</span></h2>
+      <h2 id="biblio-titulo">Todos los prompts <span class="conteo" data-conteo>{primera.total}</span></h2>
 
       {
-        total > 0 && (
+        totalGeneral > 0 && (
           <div class="buscar">
             <label for="q">Busca dentro de los prompts</label>
             <div class="buscar__campo">
@@ -137,6 +144,7 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
                 spellcheck="false"
                 enterkeyhint="search"
                 aria-describedby="q-ayuda"
+                value={q}
               />
             </div>
             <p id="q-ayuda" class="buscar__ayuda">
@@ -148,9 +156,9 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     </div>
 
     {
-      total > 0 ? (
-        <ul class="rejilla" data-rejilla>
-          {entradas.map((e) => (
+      totalGeneral > 0 ? (
+        <ul class="rejilla" data-rejilla data-pagina={Math.min(numero, totalPaginas)}>
+          {primera.entradas.map((e) => (
             <Tarjeta entrada={e} />
           ))}
         </ul>
@@ -162,15 +170,18 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
       )
     }
 
-    <div class="vacio" data-vacio hidden>
-      <p class="vacio__titulo">Ningún prompt dice <span data-vacio-q></span> todavía.</p>
+    <div data-paginacion>
+      <Paginacion actual={Math.min(numero, totalPaginas)} total={totalPaginas} q={q} />
+    </div>
+
+    <div class="vacio" data-vacio hidden={totalGeneral === 0 || primera.total > 0}>
+      <p class="vacio__titulo">Ningún prompt dice <span data-vacio-q>«{q}»</span> todavía.</p>
       <p>Prueba con otra palabra, o una más corta.</p>
       <button type="button" class="btn btn--secundario" data-limpiar><Icon name="x" /> Ver todos</button>
     </div>
     <p class="sr-only" aria-live="polite" data-anuncio></p>
   </section>
 
-  <script type="application/json" id="textos" set:html={textos} />
 </Base>
 
 <script>
@@ -360,6 +371,8 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     align-items: flex-end;
     gap: clamp(16px, 2vw, 28px);
     padding-inline: var(--gutter);
+    /* Con scroll horizontal la fila recorta lo que sobresale: espacio para que la tarjeta suba al pasar el mouse. */
+    padding-block: 16px 8px;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;

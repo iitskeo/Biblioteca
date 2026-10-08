@@ -1,6 +1,6 @@
 ---
 import Icon from './Icon.astro';
-import { aspecto, esHorizontal, media, normalizar, vtName } from '../lib/site';
+import { aspecto, esHorizontal, media, vtName } from '../lib/site';
 import type { Entrada } from '../lib/db';
 
 interface Props {
@@ -10,11 +10,11 @@ interface Props {
 const { entrada } = Astro.props;
 const { id, titulo, herramientas, video, poster, formato, prompts } = entrada;
 
-// Se busca en el título, las herramientas y el texto completo de cada prompt.
-const busqueda = normalizar([titulo, ...herramientas, ...prompts.map((p) => p.texto)].join(' \n '));
+// Texto de los prompts: de aquí sale el fragmento resaltado cuando alguien busca.
+const texto = prompts.map((p) => p.texto).join('\n\n');
 ---
 
-<li class:list={['tarjeta', { 'tarjeta--ancha': esHorizontal(formato) }]} data-id={id} data-buscar={busqueda}>
+<li class:list={['tarjeta', { 'tarjeta--ancha': esHorizontal(formato) }]} data-id={id} data-texto={texto}>
   <a href={`/p/${id}/`} data-hover>
     <div class="tarjeta__media" style={`aspect-ratio: ${aspecto(formato)}; view-transition-name: ${vtName(id)}`}>
       <video data-play="hover" muted loop playsinline preload={poster ? 'none' : 'metadata'} poster={media(poster)} aria-hidden="true" tabindex="-1">

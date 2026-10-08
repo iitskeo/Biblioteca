@@ -1,0 +1,28 @@
+---
+// Pedazo de HTML con las tarjetas de una página de la biblioteca y su paginación.
+// La portada lo pide al buscar o al cambiar de página: /fragmentos/tarjetas?q=nike&pagina=2
+// Cabecera x-total: cuántos prompts coinciden con la búsqueda.
+import Tarjeta from '../../components/Tarjeta.astro';
+import Paginacion from '../../components/Paginacion.astro';
+import { pagina, POR_PAGINA } from '../../lib/db';
+
+export const partial = true;
+
+const q = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 120);
+let pedida = Math.max(1, Math.floor(Number(Astro.url.searchParams.get('pagina')) || 1));
+let { entradas, total } = await pagina({ q, desde: (pedida - 1) * POR_PAGINA });
+const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+// Página que ya no existe (se borraron prompts, link viejo): mostrar la última.
+if (!entradas.length && pedida > paginas) {
+  pedida = paginas;
+  ({ entradas, total } = await pagina({ q, desde: (pedida - 1) * POR_PAGINA }));
+}
+
+Astro.response.headers.set('x-total', String(total));
+Astro.response.headers.set('cache-control', 'no-store');
+---
+
+<ul data-tarjetas>
+  {entradas.map((e) => <Tarjeta entrada={e} />)}
+</ul>
+<Paginacion actual={Math.min(pedida, paginas)} total={paginas} q={q} />

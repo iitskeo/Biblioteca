@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
-import { listar, obtener, type Entrada } from '../../lib/db';
+import { obtener, vecinos as buscarVecinos, type Entrada } from '../../lib/db';
 import { aspecto, esHorizontal, fecha, media, vtName } from '../../lib/site';
 
 const entrada = await obtener(Astro.params.id ?? '');
@@ -10,11 +10,10 @@ if (!entrada || entrada.borrador) return Astro.rewrite('/404');
 const { id, titulo, herramientas, video, poster, formato, prompts, tiktok, sonido, notas, fecha: dia } = entrada;
 
 // Vecinos para seguir explorando: el más antiguo y el más nuevo respecto a este.
-const todas = await listar();
-const i = todas.findIndex((e) => e.id === id);
+const { anterior, siguiente } = await buscarVecinos(entrada);
 const vecinos = [
-  todas[i + 1] && { e: todas[i + 1], rotulo: 'Anterior', dir: 'izq' as const },
-  todas[i - 1] && { e: todas[i - 1], rotulo: 'Siguiente', dir: 'der' as const },
+  anterior && { e: anterior, rotulo: 'Anterior', dir: 'izq' as const },
+  siguiente && { e: siguiente, rotulo: 'Siguiente', dir: 'der' as const },
 ].filter(Boolean) as { e: Entrada; rotulo: string; dir: 'izq' | 'der' }[];
 
 const parrafos = notas.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);

@@ -16,6 +16,14 @@ const wrangler = (...args) => {
 console.log('\nAplicando el esquema de la base local...');
 wrangler('d1', 'migrations', 'apply', 'biblioteca', '--local');
 
+// Mismo texto de búsqueda que calcula el Worker (src/lib/db.ts): minúsculas y sin acentos.
+const busqueda = (e) =>
+  [e.titulo, ...e.herramientas, ...e.prompts.map((p) => p.texto)]
+    .join(' | ')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+
 const sql = (v) => (v === null ? 'NULL' : typeof v === 'number' ? String(v) : `'${String(v).replaceAll("'", "''")}'`);
 const filas = [];
 
@@ -26,8 +34,8 @@ for (const e of ejemplos) {
   wrangler('r2', 'object', 'put', `biblioteca-media/${video}`, '--file', join('ejemplos/videos', `${e.archivo}.mp4`), '--content-type', 'video/mp4', '--local');
   wrangler('r2', 'object', 'put', `biblioteca-media/${poster}`, '--file', join('ejemplos/posters', `${e.archivo}.webp`), '--content-type', 'image/webp', '--local');
   filas.push(
-    `INSERT OR REPLACE INTO entradas (id, titulo, fecha, herramientas, prompts, notas, video, poster, formato, sonido, tiktok, borrador) VALUES (${[
-      e.id, e.titulo, e.fecha, JSON.stringify(e.herramientas), JSON.stringify(e.prompts), e.notas, video, poster, '9:16', 0, null, 0,
+    `INSERT OR REPLACE INTO entradas (id, titulo, fecha, herramientas, prompts, notas, video, poster, formato, sonido, tiktok, borrador, busqueda) VALUES (${[
+      e.id, e.titulo, e.fecha, JSON.stringify(e.herramientas), JSON.stringify(e.prompts), e.notas, video, poster, '9:16', 0, null, 0, busqueda(e),
     ].map(sql).join(', ')});`,
   );
 }

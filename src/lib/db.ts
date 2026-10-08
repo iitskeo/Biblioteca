@@ -1,6 +1,7 @@
 // Acceso a la tabla `entradas` de D1. Solo se usa en el servidor.
 import { env } from 'cloudflare:workers';
 import type { DatosEntrada } from './validar';
+import { normalizar } from './normalizar';
 
 export type Prompt = { etiqueta: string; texto: string };
 
@@ -52,26 +53,53 @@ const COLUMNAS =
 // El Worker se asegura de que la tabla exista (una vez por instancia), así el deploy automático
 // no depende de correr migraciones. Mantener igual a migrations/0001_entradas.sql.
 let esquema: Promise<unknown> | null = null;
-const listo = () =>
-  (esquema ??= env.DB.batch([
+
+// Columnas agregadas después del primer deploy: SQLite no tiene "ADD COLUMN IF NOT EXISTS".
+const agregarColumna = (definicion: string) =>
+  env.DB.prepare(`ALTER TABLE entradas ADD COLUMN ${definicion}`)
+    .run()
+    .catch((e) => {
+      if (!/duplicate column/i.test(String(e))) throw e;
+    });
+
+// Texto en el que se busca: título, herramientas y prompts, en minúsculas y sin acentos.
+const textoBusqueda = (titulo: string, herramientas: string[], prompts: Prompt[]) =>
+  normalizar([titulo, ...herramientas, ...prompts.map((p) => p.texto)].join(' | '));
+
+async function prepararEsquema() {
+  await env.DB.batch([
     env.DB.prepare(
       `CREATE TABLE IF NOT EXISTS entradas (
         id TEXT PRIMARY KEY, titulo TEXT NOT NULL, fecha TEXT NOT NULL,
         herramientas TEXT NOT NULL DEFAULT '[]', prompts TEXT NOT NULL, notas TEXT NOT NULL DEFAULT '',
         video TEXT NOT NULL, poster TEXT, formato TEXT NOT NULL DEFAULT '9:16',
         sonido INTEGER NOT NULL DEFAULT 0, tiktok TEXT, borrador INTEGER NOT NULL DEFAULT 0,
+        portada INTEGER NOT NULL DEFAULT 0, busqueda TEXT,
         creado TEXT NOT NULL DEFAULT (datetime('now')), actualizado TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
     ),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS entradas_orden ON entradas (borrador, fecha DESC, creado DESC)'),
-  ])
-    // Columna agregada después del primer deploy: SQLite no tiene "ADD COLUMN IF NOT EXISTS".
-    .then(() => env.DB.prepare('ALTER TABLE entradas ADD COLUMN portada INTEGER NOT NULL DEFAULT 0').run())
-    .catch((e) => {
-      if (/duplicate column/i.test(String(e))) return;
-      throw e;
-    })
-    .catch((e) => {
+  ]);
+  await agregarColumna('portada INTEGER NOT NULL DEFAULT 0');
+  await agregarColumna('busqueda TEXT');
+  // Rellenar el texto de búsqueda de las entradas que existían antes de esta columna.
+  const { results } = await env.DB.prepare(
+    'SELECT id, titulo, herramientas, prompts FROM entradas WHERE busqueda IS NULL',
+  ).all<Pick<Fila, 'id' | 'titulo' | 'herramientas' | 'prompts'>>();
+  if (results.length) {
+    await env.DB.batch(
+      results.map((f) =>
+        env.DB.prepare('UPDATE entradas SET busqueda = ? WHERE id = ?').bind(
+          textoBusqueda(f.titulo, leer<string[]>(f.herramientas, []), leer<Prompt[]>(f.prompts, [])),
+          f.id,
+        ),
+      ),
+    );
+  }
+}
+
+const listo = () =>
+  (esquema ??= prepararEsquema().catch((e) => {
     esquema = null; // reintentar en la próxima petición
     throw e;
   }));
@@ -83,6 +111,65 @@ export async function listar({ conBorradores = false } = {}): Promise<Entrada[]>
     `SELECT ${COLUMNAS} FROM entradas ${donde} ORDER BY fecha DESC, creado DESC`,
   ).all<Fila>();
   return results.map(aEntrada);
+}
+
+export const POR_PAGINA = 24;
+
+export async function pagina({ q = '', desde = 0, cantidad = POR_PAGINA } = {}): Promise<{
+  entradas: Entrada[];
+  total: number;
+}> {
+  await listo();
+  // Cada palabra tiene que aparecer. % y _ se escapan para que se busquen literalmente.
+  const terminos = normalizar(q).split(/\s+/).filter(Boolean).slice(0, 8);
+  const condiciones = ['borrador = 0', ...terminos.map(() => "busqueda LIKE ? ESCAPE '!'")];
+  const parametros = terminos.map((w) => `%${w.replace(/[!%_]/g, (c) => `!${c}`)}%`);
+  const donde = `WHERE ${condiciones.join(' AND ')}`;
+  const [filas, conteo] = await env.DB.batch<Fila | { total: number }>([
+    env.DB.prepare(`SELECT ${COLUMNAS} FROM entradas ${donde} ORDER BY fecha DESC, creado DESC LIMIT ? OFFSET ?`).bind(
+      ...parametros,
+      Math.min(Math.max(cantidad, 1), 60),
+      Math.max(desde, 0),
+    ),
+    env.DB.prepare(`SELECT COUNT(*) AS total FROM entradas ${donde}`).bind(...parametros),
+  ]);
+  return {
+    entradas: (filas.results as Fila[]).map(aEntrada),
+    total: (conteo.results[0] as { total: number })?.total ?? 0,
+  };
+}
+
+// Video de la intro: el marcado en el panel; si no hay, el vertical más reciente; si no, el más reciente.
+export async function principal(): Promise<Entrada | null> {
+  await listo();
+  const fila = await env.DB.prepare(
+    `SELECT ${COLUMNAS} FROM entradas WHERE borrador = 0
+     ORDER BY portada DESC, (formato = '16:9') ASC, fecha DESC, creado DESC LIMIT 1`,
+  ).first<Fila>();
+  return fila ? aEntrada(fila) : null;
+}
+
+export async function recientes(cantidad = 6): Promise<Entrada[]> {
+  return (await pagina({ cantidad })).entradas;
+}
+
+// Vecinos de una entrada en el orden de la biblioteca (para "Anterior" / "Siguiente").
+export async function vecinos(e: Entrada): Promise<{ anterior: Entrada | null; siguiente: Entrada | null }> {
+  await listo();
+  const [ant, sig] = await env.DB.batch<Fila>([
+    env.DB.prepare(
+      `SELECT ${COLUMNAS} FROM entradas WHERE borrador = 0 AND id != ? AND (fecha < ? OR (fecha = ? AND id < ?))
+       ORDER BY fecha DESC, creado DESC LIMIT 1`,
+    ).bind(e.id, e.fecha, e.fecha, e.id),
+    env.DB.prepare(
+      `SELECT ${COLUMNAS} FROM entradas WHERE borrador = 0 AND id != ? AND (fecha > ? OR (fecha = ? AND id > ?))
+       ORDER BY fecha ASC, creado ASC LIMIT 1`,
+    ).bind(e.id, e.fecha, e.fecha, e.id),
+  ]);
+  return {
+    anterior: ant.results[0] ? aEntrada(ant.results[0]) : null,
+    siguiente: sig.results[0] ? aEntrada(sig.results[0]) : null,
+  };
 }
 
 export async function obtener(id: string): Promise<Entrada | null> {
@@ -124,14 +211,15 @@ const valores = (d: DatosEntrada) => [
   d.tiktok,
   d.borrador ? 1 : 0,
   d.portada ? 1 : 0,
+  textoBusqueda(d.titulo, d.herramientas, d.prompts),
 ];
 
 export async function crear(d: DatosEntrada): Promise<string> {
   await listo();
   const id = await idLibre(d.titulo);
   await env.DB.prepare(
-    `INSERT INTO entradas (id, titulo, fecha, herramientas, prompts, notas, video, poster, formato, sonido, tiktok, borrador, portada)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO entradas (id, titulo, fecha, herramientas, prompts, notas, video, poster, formato, sonido, tiktok, borrador, portada, busqueda)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(id, ...valores(d))
     .run();
@@ -150,7 +238,7 @@ export async function actualizar(id: string, d: DatosEntrada): Promise<Entrada |
   if (!antes) return null;
   await env.DB.prepare(
     `UPDATE entradas SET titulo = ?, fecha = ?, herramientas = ?, prompts = ?, notas = ?, video = ?, poster = ?,
-       formato = ?, sonido = ?, tiktok = ?, borrador = ?, portada = ?, actualizado = datetime('now')
+       formato = ?, sonido = ?, tiktok = ?, borrador = ?, portada = ?, busqueda = ?, actualizado = datetime('now')
      WHERE id = ?`,
   )
     .bind(...valores(d), id)

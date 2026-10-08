@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS entradas (
   sonido       INTEGER NOT NULL DEFAULT 0,
   tiktok       TEXT,
   borrador     INTEGER NOT NULL DEFAULT 0,
+  portada      INTEGER NOT NULL DEFAULT 0,          -- 1 = este video va en la intro
+  busqueda     TEXT,                                -- título + herramientas + prompts, sin acentos
   creado       TEXT NOT NULL DEFAULT (datetime('now')),
   actualizado  TEXT NOT NULL DEFAULT (datetime('now'))
 );

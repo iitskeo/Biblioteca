@@ -1,0 +1,155 @@
+---
+// Páginas numeradas de la biblioteca: « Anterior  1 … 4 5 6 … 42  Siguiente »
+// Son links reales (funcionan sin JavaScript); biblioteca.ts los intercepta para cambiar solo la rejilla.
+import Icon from './Icon.astro';
+
+interface Props {
+  actual: number;
+  total: number; // cantidad de páginas
+  q?: string;
+}
+
+const { actual, total, q = '' } = Astro.props;
+
+const href = (n: number) => {
+  const p = new URLSearchParams();
+  if (q) p.set('q', q);
+  if (n > 1) p.set('pagina', String(n));
+  const s = p.toString();
+  return `/${s ? `?${s}` : ''}#biblioteca`;
+};
+
+// Siempre la primera, la última y dos alrededor de la actual; huecos con "…".
+const numeros: (number | null)[] = [];
+for (let n = 1; n <= total; n++) {
+  if (n === 1 || n === total || Math.abs(n - actual) <= 1 || (actual <= 3 && n <= 4) || (actual >= total - 2 && n >= total - 3)) {
+    numeros.push(n);
+  } else if (numeros[numeros.length - 1] !== null) {
+    numeros.push(null);
+  }
+}
+---
+
+{
+  total > 1 && (
+    <nav class="paginas" aria-label="Páginas de la biblioteca" data-paginas>
+      {actual > 1 ? (
+        <a class="paginas__flecha" href={href(actual - 1)} data-pagina={actual - 1} rel="prev">
+          <Icon name="arrowLeft" />
+          <span>Anterior</span>
+        </a>
+      ) : (
+        <span class="paginas__flecha" aria-hidden="true" data-apagado>
+          <Icon name="arrowLeft" />
+          <span>Anterior</span>
+        </span>
+      )}
+
+      <ol class="paginas__numeros">
+        {numeros.map((n) =>
+          n === null ? (
+            <li class="paginas__hueco" aria-hidden="true">…</li>
+          ) : (
+            <li>
+              <a href={href(n)} data-pagina={n} aria-current={n === actual ? 'page' : undefined}>
+                <span class="sr-only">Página </span>
+                {n}
+              </a>
+            </li>
+          ),
+        )}
+      </ol>
+
+      {actual < total ? (
+        <a class="paginas__flecha" href={href(actual + 1)} data-pagina={actual + 1} rel="next">
+          <span>Siguiente</span>
+          <Icon name="arrowRight" />
+        </a>
+      ) : (
+        <span class="paginas__flecha" aria-hidden="true" data-apagado>
+          <span>Siguiente</span>
+          <Icon name="arrowRight" />
+        </span>
+      )}
+    </nav>
+  )
+}
+
+<style>
+  .paginas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px 16px;
+    padding-top: 56px;
+  }
+  .paginas__numeros {
+    display: flex;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .paginas__numeros a,
+  .paginas__hueco {
+    display: grid;
+    place-items: center;
+    min-width: 44px;
+    height: 44px;
+    padding-inline: 8px;
+    border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+  .paginas__hueco {
+    color: var(--muted);
+  }
+  .paginas__numeros a {
+    border: 1px solid transparent;
+    transition:
+      background-color 200ms ease,
+      border-color 200ms ease,
+      transform 160ms var(--ease-out);
+  }
+  .paginas__numeros a[aria-current='page'] {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  .paginas__flecha {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding-inline: 16px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    transition:
+      background-color 200ms ease,
+      transform 160ms var(--ease-out);
+  }
+  .paginas__flecha[data-apagado] {
+    opacity: 0.35;
+  }
+  a.paginas__flecha:active,
+  .paginas__numeros a:active {
+    transform: scale(0.97);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    a.paginas__flecha:hover,
+    .paginas__numeros a:not([aria-current]):hover {
+      background: var(--surface);
+      border-color: var(--line);
+    }
+  }
+  @media (max-width: 520px) {
+    .paginas__flecha span:not(.icon) {
+      display: none;
+    }
+    .paginas__flecha {
+      padding-inline: 12px;
+    }
+  }
+</style>

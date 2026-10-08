@@ -18,6 +18,7 @@ type Entrada = {
   sonido: boolean;
   tiktok: string | null;
   borrador: boolean;
+  portada: boolean;
 };
 
 const $ = <T extends Element = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
@@ -44,6 +45,7 @@ const ui = {
   opcionOptimizar: $('[data-opcion-optimizar]'),
   optimizar: $<HTMLInputElement>('[data-optimizar]'),
   sonido: $<HTMLInputElement>('[data-sonido]'),
+  portadaIntro: $<HTMLInputElement>('[data-portada-intro]'),
   titulo: $<HTMLInputElement>('[data-titulo]'),
   prompts: $('[data-prompts]'),
   agregarPrompt: $<HTMLButtonElement>('[data-agregar-prompt]'),
@@ -508,6 +510,7 @@ async function guardar(borrador: boolean) {
       poster,
       formato,
       sonido: ui.sonido.checked,
+      portada: ui.portadaIntro.checked,
       tiktok: ui.tiktok.value.trim() || null,
       borrador,
     };
@@ -588,6 +591,7 @@ function editar(e: Entrada) {
   ui.tiktok.value = e.tiktok ?? '';
   ui.notas.value = e.notas;
   ui.sonido.checked = e.sonido;
+  ui.portadaIntro.checked = e.portada;
   ui.prompts.replaceChildren();
   for (const p of e.prompts) agregarPrompt(p);
   if (!e.prompts.length) agregarPrompt();
@@ -663,10 +667,14 @@ function pintarLista() {
         s.textContent = dato;
         meta.append(s);
       }
-      if (e.borrador) {
+      for (const [activo, texto] of [
+        [e.borrador, 'Borrador'],
+        [e.portada, 'En la intro'],
+      ] as const) {
+        if (!activo) continue;
         const b = document.createElement('span');
         b.className = 'fila__borrador';
-        b.textContent = 'Borrador';
+        b.textContent = texto;
         meta.append(b);
       }
       texto.append(titulo, meta);

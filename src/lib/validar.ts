@@ -13,6 +13,7 @@ export type DatosEntrada = {
   sonido: boolean;
   tiktok: string | null;
   borrador: boolean;
+  portada: boolean;
 };
 
 const FORMATOS = ['9:16', '16:9', '1:1', '4:5'];
@@ -80,6 +81,7 @@ export function validar(cuerpo: unknown): { ok: true; datos: DatosEntrada } | { 
       sonido: c.sonido === true,
       tiktok,
       borrador: c.borrador === true,
+      portada: c.portada === true,
     },
   };
 }

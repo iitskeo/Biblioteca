@@ -42,21 +42,18 @@ const busqueda = normalizar([titulo, ...herramientas, ...prompts.map((p) => p.te
   .tarjeta__media {
     position: relative;
     overflow: hidden;
+    padding: var(--marco);
+    border: 1px solid var(--marco-borde);
     border-radius: var(--radius);
     background: var(--surface);
-    transition: transform 400ms var(--ease-out);
-  }
-  .tarjeta__media::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text) 8%, transparent);
-    pointer-events: none;
+    transition:
+      transform 400ms var(--ease-out),
+      border-color 200ms ease;
   }
   video {
     width: 100%;
     height: 100%;
+    border-radius: calc(var(--radius) - var(--marco));
     object-fit: cover;
     transition: transform 600ms var(--ease-out);
   }
@@ -118,8 +115,8 @@ const busqueda = normalizar([titulo, ...herramientas, ...prompts.map((p) => p.te
     a:hover .tarjeta__media {
       transform: translateY(-4px);
     }
-    a:hover video {
-      transform: scale(1.03);
+    a:hover .tarjeta__media {
+      border-color: color-mix(in oklab, var(--accent) 45%, transparent);
     }
     a:hover h3 :global(.icon) {
       opacity: 1;

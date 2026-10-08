@@ -17,13 +17,16 @@ export type Entrada = {
   sonido: boolean;
   tiktok: string | null;
   borrador: boolean;
+  /** Este video va dentro de las letras de la intro. */
+  portada: boolean;
 };
 
-type Fila = Omit<Entrada, 'herramientas' | 'prompts' | 'sonido' | 'borrador'> & {
+type Fila = Omit<Entrada, 'herramientas' | 'prompts' | 'sonido' | 'borrador' | 'portada'> & {
   herramientas: string;
   prompts: string;
   sonido: number;
   borrador: number;
+  portada: number;
 };
 
 const leer = <T>(json: string, porDefecto: T): T => {
@@ -40,10 +43,11 @@ const aEntrada = (f: Fila): Entrada => ({
   prompts: leer<Prompt[]>(f.prompts, []),
   sonido: f.sonido === 1,
   borrador: f.borrador === 1,
+  portada: f.portada === 1,
 });
 
 const COLUMNAS =
-  'id, titulo, fecha, herramientas, prompts, notas, video, poster, formato, sonido, tiktok, borrador';
+  'id, titulo, fecha, herramientas, prompts, notas, video, poster, formato, sonido, tiktok, borrador, portada';
 
 // El Worker se asegura de que la tabla exista (una vez por instancia), así el deploy automático
 // no depende de correr migraciones. Mantener igual a migrations/0001_entradas.sql.
@@ -60,7 +64,14 @@ const listo = () =>
       )`,
     ),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS entradas_orden ON entradas (borrador, fecha DESC, creado DESC)'),
-  ]).catch((e) => {
+  ])
+    // Columna agregada después del primer deploy: SQLite no tiene "ADD COLUMN IF NOT EXISTS".
+    .then(() => env.DB.prepare('ALTER TABLE entradas ADD COLUMN portada INTEGER NOT NULL DEFAULT 0').run())
+    .catch((e) => {
+      if (/duplicate column/i.test(String(e))) return;
+      throw e;
+    })
+    .catch((e) => {
     esquema = null; // reintentar en la próxima petición
     throw e;
   }));
@@ -112,18 +123,25 @@ const valores = (d: DatosEntrada) => [
   d.sonido ? 1 : 0,
   d.tiktok,
   d.borrador ? 1 : 0,
+  d.portada ? 1 : 0,
 ];
 
 export async function crear(d: DatosEntrada): Promise<string> {
   await listo();
   const id = await idLibre(d.titulo);
   await env.DB.prepare(
-    `INSERT INTO entradas (id, titulo, fecha, herramientas, prompts, notas, video, poster, formato, sonido, tiktok, borrador)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO entradas (id, titulo, fecha, herramientas, prompts, notas, video, poster, formato, sonido, tiktok, borrador, portada)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(id, ...valores(d))
     .run();
+  if (d.portada) await soloEstaEnPortada(id);
   return id;
+}
+
+// Solo un video puede estar en la intro: marcar uno desmarca los demás.
+async function soloEstaEnPortada(id: string) {
+  await env.DB.prepare('UPDATE entradas SET portada = 0 WHERE portada = 1 AND id != ?').bind(id).run();
 }
 
 // Devuelve la versión anterior para poder borrar de R2 los archivos que se reemplazaron.
@@ -132,11 +150,12 @@ export async function actualizar(id: string, d: DatosEntrada): Promise<Entrada |
   if (!antes) return null;
   await env.DB.prepare(
     `UPDATE entradas SET titulo = ?, fecha = ?, herramientas = ?, prompts = ?, notas = ?, video = ?, poster = ?,
-       formato = ?, sonido = ?, tiktok = ?, borrador = ?, actualizado = datetime('now')
+       formato = ?, sonido = ?, tiktok = ?, borrador = ?, portada = ?, actualizado = datetime('now')
      WHERE id = ?`,
   )
     .bind(...valores(d), id)
     .run();
+  if (d.portada) await soloEstaEnPortada(id);
   const quitar = [antes.video !== d.video && antes.video, antes.poster !== d.poster && antes.poster].filter(
     (k): k is string => Boolean(k),
   );

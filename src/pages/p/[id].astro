@@ -205,11 +205,11 @@ const descripcion = `${herramientas.length ? `${herramientas.join(' + ')}. ` : '
     height: min(calc(100dvh - var(--nav-h) - 72px), 820px);
     max-width: 100%;
     overflow: hidden;
+    padding: var(--marco);
+    border: 1px solid var(--marco-borde);
     border-radius: var(--radius);
     background: var(--surface);
-    box-shadow:
-      var(--media-shadow),
-      inset 0 0 0 1px color-mix(in oklab, var(--text) 8%, transparent);
+    box-shadow: var(--media-shadow);
   }
   /* Videos horizontales: todo apilado (título, video, prompts) a cualquier ancho. */
   .detalle--ancho {
@@ -246,6 +246,7 @@ const descripcion = `${herramientas.length ? `${herramientas.join(' + ')}. ` : '
   .player video {
     width: 100%;
     height: 100%;
+    border-radius: calc(var(--radius) - var(--marco));
     object-fit: cover;
     cursor: pointer;
   }

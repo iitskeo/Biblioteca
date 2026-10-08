@@ -6,7 +6,8 @@ import { listar } from '../lib/db';
 import { aspecto, esHorizontal, media } from '../lib/site';
 
 const entradas = await listar();
-const principal = entradas.find((e) => !esHorizontal(e.formato)) ?? entradas[0];
+// Video de la intro: el marcado en el panel; si no hay, el vertical más reciente; si no, el más reciente.
+const principal = entradas.find((e) => e.portada) ?? entradas.find((e) => !esHorizontal(e.formato)) ?? entradas[0];
 const recientes = entradas.slice(0, 6);
 const total = entradas.length;
 
@@ -42,6 +43,8 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
           </video>
         )
       }
+      <!-- Tinte menta: las letras siempre se leen aunque el video sea oscuro o tenga logos. -->
+      <div class="intro__tinte" data-tinte></div>
       <div class="intro__velo" data-velo></div>
 
       <div class="intro__mascara" data-mascara aria-hidden="true">
@@ -55,6 +58,8 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
           }
         </span>
       </div>
+      <!-- Convierte el negro de la máscara en el color exacto de la página (sin "fantasmas" del video). -->
+      <div class="intro__fondo" aria-hidden="true"></div>
 
       <p class="intro__manifiesto wrap" data-manifiesto>
         {manifiesto.map((p) => <span>{p} </span>)}
@@ -202,6 +207,19 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     height: 100%;
     object-fit: cover;
     z-index: 0;
+    /* Dentro de las letras el video es textura: desenfocado y suave. Se aclara al atravesar la "k". */
+    filter: blur(14px) saturate(0.75);
+  }
+  .intro__tinte {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+      radial-gradient(120% 90% at 30% 20%, color-mix(in oklab, var(--accent) 85%, transparent), transparent 70%),
+      linear-gradient(160deg, color-mix(in oklab, var(--accent) 55%, transparent), rgb(13 59 46 / 0.7));
+    mix-blend-mode: screen;
+    opacity: 0.75;
+    pointer-events: none;
   }
   .intro__velo {
     position: absolute;
@@ -212,7 +230,9 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     pointer-events: none;
   }
 
-  /* El video solo se ve donde están las letras: fondo sólido + letras blancas en "multiply". */
+  /* El video solo se ve donde están las letras: negro puro + letras blancas en "multiply"
+     (afuera queda negro exacto, sin fuga). Después .intro__fondo, en "lighten", vuelve ese negro
+     el color de la página. En modo claro es al revés: blanco + "screen", y luego "darken". */
   .intro__mascara {
     position: absolute;
     inset: 0;
@@ -220,20 +240,33 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     display: grid;
     place-items: center;
     padding-bottom: 14svh;
-    background: var(--bg);
+    background: #000;
     color: #fff;
     mix-blend-mode: multiply;
     pointer-events: none;
   }
+  .intro__fondo {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: var(--bg);
+    mix-blend-mode: lighten;
+    pointer-events: none;
+  }
   @media (prefers-color-scheme: light) {
     .intro__mascara {
+      background: #fff;
       color: #000;
       mix-blend-mode: screen;
+    }
+    .intro__fondo {
+      mix-blend-mode: darken;
     }
   }
   /* Sin video todavía: la palabra se ve sólida en vez de ser una ventana vacía. */
   .intro--sin-video .intro__mascara {
     mix-blend-mode: normal;
+    background: var(--bg);
     color: var(--accent);
   }
   .intro__palabra {
@@ -355,24 +388,28 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
   .reciente__item {
     flex: none;
     scroll-snap-align: start;
-    width: calc(min(64svh, 600px) * 9 / 16);
+    width: calc(min(46svh, 440px) * 9 / 16);
   }
   .reciente__item--ancho {
-    width: calc(min(64svh, 600px) * 16 / 9);
+    width: calc(min(34svh, 330px) * 16 / 9);
   }
   .reciente__item:nth-child(odd) {
     margin-bottom: 48px;
   }
   .reciente__media {
     overflow: hidden;
+    padding: var(--marco);
+    border: 1px solid var(--marco-borde);
     border-radius: var(--radius);
     background: var(--surface);
-    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text) 8%, transparent);
-    transition: transform 400ms var(--ease-out);
+    transition:
+      transform 400ms var(--ease-out),
+      border-color 200ms ease;
   }
   .reciente__media video {
     width: 100%;
     height: 100%;
+    border-radius: calc(var(--radius) - var(--marco));
     object-fit: cover;
     transition: transform 600ms var(--ease-out);
   }
@@ -405,8 +442,8 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     .reciente__item:hover .reciente__media {
       transform: translateY(-6px);
     }
-    .reciente__item:hover video {
-      transform: scale(1.04);
+    .reciente__item:hover .reciente__media {
+      border-color: color-mix(in oklab, var(--accent) 45%, transparent);
     }
     .reciente__item:hover h3 :global(.icon) {
       opacity: 1;
@@ -434,12 +471,7 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
       padding-top: var(--nav-h);
       overflow: hidden;
     }
-    :global(.anim) .reciente__item {
-      width: calc(min(56svh, 560px) * 9 / 16);
-    }
-    :global(.anim) .reciente__item--ancho {
-      width: calc(min(56svh, 560px) * 16 / 9);
-    }
+
     :global(.anim) .reciente__pista {
       overflow: visible;
       scroll-snap-type: none;
@@ -568,10 +600,10 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
       padding-bottom: 30svh;
     }
     .reciente__item {
-      width: min(62vw, 300px);
+      width: min(52vw, 240px);
     }
     .reciente__item--ancho {
-      width: 86vw;
+      width: min(78vw, 360px);
     }
     .reciente__item:nth-child(odd) {
       margin-bottom: 0;

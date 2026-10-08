@@ -13,11 +13,12 @@
 :root {
   color-scheme: dark light;
 
-  --bg: #0a0d0c;
-  --bg-2: #101513;
-  --surface: #161c19;
-  --surface-2: #1e2622;
-  --line: #27312c;
+  /* Un tono por encima del negro: los videos con fondo negro se distinguen de la página. */
+  --bg: #0e1311;
+  --bg-2: #141b18;
+  --surface: #1a221e;
+  --surface-2: #222c27;
+  --line: #2d3933;
   --text: #e8eeeb;
   --muted: #94a29b;
   --accent: #72e4b0;
@@ -33,6 +34,9 @@
 
   --radius: 20px;
   --radius-sm: 12px;
+  /* Marco de los videos: panel con borde y margen interior (paspartú). */
+  --marco: 6px;
+  --marco-borde: color-mix(in oklab, var(--text) 13%, transparent);
   --gutter: clamp(16px, 4vw, 40px);
   --max: 1320px;
   --nav-h: 64px;

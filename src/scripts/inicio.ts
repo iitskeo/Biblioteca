@@ -80,6 +80,8 @@ function intro() {
   tl.to('[data-base]', { opacity: 0, y: -24, duration: 0.08 }, 0)
     .to(palabra, { scale: 30, ease: 'power2.in', duration: 0.3 }, 0)
     .to('[data-mascara]', { opacity: 0, duration: 0.08 }, 0.24)
+    .to('[data-tinte]', { opacity: 0, duration: 0.08 }, 0.22)
+    .to('[data-intro-video]', { filter: 'blur(3px) saturate(0.9)', duration: 0.1 }, 0.2)
     .to('[data-velo]', { opacity: 1, duration: 0.1 }, 0.28)
     .fromTo('[data-manifiesto]', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.08 }, 0.32)
     .to('[data-manifiesto] span', { opacity: 1, duration: 0.04, stagger: 0.024 }, 0.36)

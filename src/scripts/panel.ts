@@ -45,7 +45,6 @@ const ui = {
   opcionOptimizar: $('[data-opcion-optimizar]'),
   optimizar: $<HTMLInputElement>('[data-optimizar]'),
   sonido: $<HTMLInputElement>('[data-sonido]'),
-  portadaIntro: $<HTMLInputElement>('[data-portada-intro]'),
   titulo: $<HTMLInputElement>('[data-titulo]'),
   prompts: $('[data-prompts]'),
   agregarPrompt: $<HTMLButtonElement>('[data-agregar-prompt]'),
@@ -510,7 +509,7 @@ async function guardar(borrador: boolean) {
       poster,
       formato,
       sonido: ui.sonido.checked,
-      portada: ui.portadaIntro.checked,
+      portada: false,
       tiktok: ui.tiktok.value.trim() || null,
       borrador,
     };
@@ -591,7 +590,6 @@ function editar(e: Entrada) {
   ui.tiktok.value = e.tiktok ?? '';
   ui.notas.value = e.notas;
   ui.sonido.checked = e.sonido;
-  ui.portadaIntro.checked = e.portada;
   ui.prompts.replaceChildren();
   for (const p of e.prompts) agregarPrompt(p);
   if (!e.prompts.length) agregarPrompt();
@@ -667,14 +665,10 @@ function pintarLista() {
         s.textContent = dato;
         meta.append(s);
       }
-      for (const [activo, texto] of [
-        [e.borrador, 'Borrador'],
-        [e.portada, 'En la intro'],
-      ] as const) {
-        if (!activo) continue;
+      if (e.borrador) {
         const b = document.createElement('span');
         b.className = 'fila__borrador';
-        b.textContent = texto;
+        b.textContent = 'Borrador';
         meta.append(b);
       }
       texto.append(titulo, meta);

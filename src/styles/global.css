@@ -349,17 +349,19 @@ ul {
   color: var(--muted);
 }
 
-/* ---------- Scroll suave (Lenis) ---------- */
+/* ---------- Entradas al hacer scroll (src/scripts/inicio.ts) ---------- */
 
-html.lenis,
-html.lenis body {
-  height: auto;
+.anim .revelar {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 600ms var(--ease-out),
+    transform 600ms var(--ease-out);
+  transition-delay: calc(var(--orden, 0) * 50ms);
 }
-html.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-.lenis.lenis-stopped {
-  overflow: clip;
+.anim .revelar.visible {
+  opacity: 1;
+  transform: none;
 }
 
 /* ---------- Transiciones entre páginas ---------- */

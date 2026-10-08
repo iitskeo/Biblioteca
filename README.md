@@ -26,10 +26,6 @@ No hay categorías: se busca por palabras dentro del texto de los prompts (y el 
 
 La biblioteca va en **páginas numeradas de 24**, lo más nuevo primero. La búsqueda la hace el servidor sobre todos los prompts, así que funciona igual con 10 que con 1000, y la página nunca carga más de 24 videos a la vez. Se pueden compartir búsquedas y páginas: `/?q=nike`, `/?pagina=3`.
 
-## La intro
-
-En el panel, "Usar en la intro de la portada" elige qué video va dentro de las letras (uno a la vez). Sin marcar ninguno, se usa el vertical más reciente. Dentro de las letras el video va desenfocado y teñido de menta para que se lea siempre; se aclara al atravesar la "k".
-
 ## Primera publicación en Cloudflare
 
 ```bash
@@ -66,9 +62,9 @@ npm run dev
 
 `npm run ejemplos` carga 4 prompts de ejemplo en la base y el almacenamiento **locales** (no toca producción). La clave local del panel está en `.dev.vars` (no se sube al repo): abre `http://localhost:4321/panel#clave=<esa clave>`.
 
-## Animaciones de la portada
+## Animaciones
 
-La intro (video dentro de "itskeo", zoom a través de la "k", manifiesto) y la entrada suave de las secciones están en `src/scripts/inicio.ts` (GSAP + ScrollTrigger + Lenis). El video de la intro es siempre el prompt vertical más reciente.
+La portada es liviana a propósito: la intro ("itskeo" entrando letra por letra) es CSS puro y las secciones aparecen suaves con un observador nativo del navegador (`src/scripts/inicio.ts`, sin librerías).
 
 Si el sistema tiene activado "reducir movimiento" (en Windows: *Configuración → Accesibilidad → Efectos visuales → Efectos de animación* apagado), la página se muestra estática a propósito. Para verlas igual: `?movimiento=1` (y `?movimiento=0` para volver).
 

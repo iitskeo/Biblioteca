@@ -3,15 +3,14 @@ import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import Tarjeta from '../components/Tarjeta.astro';
 import Paginacion from '../components/Paginacion.astro';
-import { pagina, POR_PAGINA, principal as buscarPrincipal, recientes as buscarRecientes } from '../lib/db';
+import { pagina, POR_PAGINA, recientes as buscarRecientes } from '../lib/db';
 import { aspecto, esHorizontal, fecha, media } from '../lib/site';
 
 // La biblioteca va en páginas de 24 (?pagina=2). Con ?q= viene filtrada.
 // Los links de búsqueda y de página funcionan sin JavaScript; con JavaScript solo cambia la rejilla.
 const q = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 120);
 const numero = Math.max(1, Math.floor(Number(Astro.url.searchParams.get('pagina')) || 1));
-const [principal, [ultimo], todas, filtradas] = await Promise.all([
-  buscarPrincipal(),
+const [[ultimo], todas, filtradas] = await Promise.all([
   buscarRecientes(1),
   pagina({ cantidad: q || numero > 1 ? 1 : undefined }),
   q || numero > 1 ? pagina({ q, desde: (numero - 1) * POR_PAGINA }) : null,
@@ -25,54 +24,23 @@ if (!primera.entradas.length && numero > totalPaginas) {
 }
 
 const letras = [...'itskeo'];
-const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos, completos y listos para copiar.'.split(' ');
 ---
 
 <Base>
-  <!-- Intro: el video se ve a través de las letras; al hacer scroll la cámara las atraviesa. -->
-  <section class:list={['intro', { 'intro--sin-video': !principal }]} data-intro>
+  <!-- Intro: la palabra entra letra por letra. Liviana: sin video ni librerías. -->
+  <section class="intro">
     <div class="intro__escena">
-      {
-        principal && (
-          <video
-            class="intro__video"
-            data-intro-video
-            data-play="auto"
-            muted
-            loop
-            playsinline
-            preload="auto"
-            poster={media(principal.poster)}
-            aria-hidden="true"
-            tabindex="-1"
-          >
-            <source src={media(principal.video)} type="video/mp4" />
-          </video>
-        )
-      }
-      <!-- Tinte menta: las letras siempre se leen aunque el video sea oscuro o tenga logos. -->
-      <div class="intro__tinte" data-tinte></div>
-      <div class="intro__velo" data-velo></div>
-
-      <div class="intro__mascara" data-mascara aria-hidden="true">
-        <span class="intro__palabra" data-palabra>
-          {
-            letras.map((l) => (
-              <span class="intro__letra">
-                <span>{l}</span>
-              </span>
-            ))
-          }
-        </span>
-      </div>
-      <!-- Convierte el negro de la máscara en el color exacto de la página (sin "fantasmas" del video). -->
-      <div class="intro__fondo" aria-hidden="true"></div>
-
-      <p class="intro__manifiesto wrap" data-manifiesto>
-        {manifiesto.map((p) => <span>{p} </span>)}
+      <p class="intro__palabra" aria-hidden="true">
+        {
+          letras.map((l, i) => (
+            <span class="intro__letra" style={`--i: ${i}`}>
+              <span>{l}</span>
+            </span>
+          ))
+        }
       </p>
 
-      <div class="intro__base wrap" data-base>
+      <div class="intro__base wrap">
         <div class="intro__copy">
           <h1>Cada video, <span>con su prompt.</span></h1>
           <p>Aquí dejo los prompts exactos de mis videos. Cópialos, juega con ellos y etiquétame con lo que salga.</p>
@@ -176,102 +144,28 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
 <style>
   /* ================= Intro ================= */
   .intro {
-    position: relative;
     margin-top: calc(var(--nav-h) * -1);
-    background: var(--bg);
-  }
-  /* Con animaciones la sección mide 2.2 pantallas y la escena se queda pegada mientras dura el recorrido. */
-  :global(.anim) .intro {
-    height: 220svh;
-  }
-  :global(.anim) .intro--sin-video {
-    height: auto;
   }
   .intro__escena {
-    position: sticky;
-    top: 0;
-    isolation: isolate;
-    overflow: hidden;
+    position: relative;
+    display: grid;
+    grid-template-rows: 1fr auto;
     height: 100svh;
     min-height: 560px;
-  }
-  .intro__video {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: 0;
-    /* Dentro de las letras el video es textura: desenfocado y suave. Se aclara al atravesar la "k". */
-    filter: blur(14px) saturate(0.75);
-  }
-  .intro__tinte {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    background:
-      radial-gradient(120% 90% at 30% 20%, color-mix(in oklab, var(--accent) 85%, transparent), transparent 70%),
-      linear-gradient(160deg, color-mix(in oklab, var(--accent) 55%, transparent), rgb(13 59 46 / 0.7));
-    mix-blend-mode: screen;
-    opacity: 0.75;
-    pointer-events: none;
-  }
-  .intro__velo {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    opacity: 0;
-    background: linear-gradient(to top, rgb(5 11 9 / 0.8), rgb(5 11 9 / 0.36) 60%, rgb(5 11 9 / 0.2));
-    pointer-events: none;
-  }
-
-  /* El video solo se ve donde están las letras: negro puro + letras blancas en "multiply"
-     (afuera queda negro exacto, sin fuga). Después .intro__fondo, en "lighten", vuelve ese negro
-     el color de la página. En modo claro es al revés: blanco + "screen", y luego "darken". */
-  .intro__mascara {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    display: grid;
-    place-items: center;
-    padding-bottom: 14svh;
-    background: #000;
-    color: #fff;
-    mix-blend-mode: multiply;
-    pointer-events: none;
-  }
-  .intro__fondo {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    background: var(--bg);
-    mix-blend-mode: lighten;
-    pointer-events: none;
-  }
-  @media (prefers-color-scheme: light) {
-    .intro__mascara {
-      background: #fff;
-      color: #000;
-      mix-blend-mode: screen;
-    }
-    .intro__fondo {
-      mix-blend-mode: darken;
-    }
-  }
-  /* Sin video todavía: la palabra se ve sólida en vez de ser una ventana vacía. */
-  .intro--sin-video .intro__mascara {
-    mix-blend-mode: normal;
-    background: var(--bg);
-    color: var(--accent);
+    max-height: 980px;
+    padding-top: var(--nav-h);
+    overflow: hidden;
   }
   .intro__palabra {
-    position: relative;
     display: flex;
+    align-self: center;
+    justify-self: center;
+    margin: 0;
     font-family: var(--display);
     font-size: clamp(7rem, 28vw, 32rem);
     font-weight: 800;
     line-height: 1;
-    will-change: transform;
+    color: var(--accent);
   }
   /* Interletrado apretado con márgenes (no letter-spacing) para que el recorte de la entrada no corte los bordes. */
   .intro__letra {
@@ -285,9 +179,6 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
   }
 
   .intro__base {
-    position: absolute;
-    inset: auto 0 0 0;
-    z-index: 3;
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
@@ -312,37 +203,28 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     color: var(--muted);
   }
 
-  .intro__manifiesto {
-    display: none;
-  }
-
-  /* Estado inicial de la entrada (solo con animaciones activas, para que no parpadee). */
+  /* Entrada (solo con animaciones permitidas): las letras suben desde su máscara, luego el texto. */
   :global(.anim) .intro__letra > span {
-    transform: translateY(115%);
+    animation: subir-letra 1.2s var(--ease) backwards;
+    animation-delay: calc(0.1s + var(--i) * 70ms);
   }
-  :global(.anim) .intro__video,
   :global(.anim) .intro__base > * {
-    opacity: 0;
+    animation: aparecer 0.9s var(--ease) backwards;
+    animation-delay: 0.6s;
   }
-  :global(.anim) .intro__manifiesto {
-    position: absolute;
-    inset: 0;
-    z-index: 3;
-    display: flex;
-    flex-wrap: wrap;
-    align-content: center;
-    gap: 0 0.28em;
-    font-family: var(--display);
-    font-size: clamp(2.25rem, 5.2vw, 5rem);
-    font-weight: 700;
-    letter-spacing: -0.035em;
-    line-height: 1.04;
-    color: #f2f2f0;
-    opacity: 0;
-    pointer-events: none;
+  :global(.anim) .intro__base > * + * {
+    animation-delay: 0.7s;
   }
-  :global(.anim) .intro__manifiesto span {
-    opacity: 0.14;
+  @keyframes subir-letra {
+    from {
+      transform: translateY(115%);
+    }
+  }
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
   }
 
   /* ================= Lo más reciente ================= */
@@ -549,9 +431,6 @@ const manifiesto = 'En cada video me preguntan por el prompt. Aquí están todos
     .intro__base {
       flex-direction: column;
       align-items: stretch;
-    }
-    .intro__mascara {
-      padding-bottom: 30svh;
     }
     .reciente,
     .reciente--ancho {

@@ -139,16 +139,6 @@ export async function pagina({ q = '', desde = 0, cantidad = POR_PAGINA } = {}):
   };
 }
 
-// Video de la intro: el marcado en el panel; si no hay, el vertical más reciente; si no, el más reciente.
-export async function principal(): Promise<Entrada | null> {
-  await listo();
-  const fila = await env.DB.prepare(
-    `SELECT ${COLUMNAS} FROM entradas WHERE borrador = 0
-     ORDER BY portada DESC, (formato = '16:9') ASC, fecha DESC, creado DESC LIMIT 1`,
-  ).first<Fila>();
-  return fila ? aEntrada(fila) : null;
-}
-
 export async function recientes(cantidad = 6): Promise<Entrada[]> {
   return (await pagina({ cantidad })).entradas;
 }

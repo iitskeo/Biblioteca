@@ -70,7 +70,7 @@ const letras = [...'itskeo'];
           </a>
         </div>
         <a class="reciente__media" href={`/p/${ultimo.id}/`} style={`aspect-ratio: ${aspecto(ultimo.formato)}`} aria-label={`Ver ${ultimo.titulo}`}>
-          <video data-play="auto" muted loop playsinline preload="metadata" poster={media(ultimo.poster)} aria-hidden="true" tabindex="-1">
+          <video controlslist="nodownload noremoteplayback noplaybackrate" disablepictureinpicture disableremoteplayback draggable="false" data-play="auto" muted loop playsinline preload="metadata" poster={media(ultimo.poster)} aria-hidden="true" tabindex="-1">
             <source src={media(ultimo.video)} type="video/mp4" />
           </video>
         </a>

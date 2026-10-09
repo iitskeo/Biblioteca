@@ -59,3 +59,11 @@ export function observarVideos(zona: ParentNode = document) {
 }
 
 observarVideos();
+
+// Los videos son de itskeo: sin menú contextual ("Guardar video como…") ni arrastrar el archivo.
+// El servidor además rechaza abrir o descargar la URL del video fuera de esta web (ver /media).
+for (const evento of ['contextmenu', 'dragstart'] as const) {
+  document.addEventListener(evento, (e) => {
+    if ((e.target as Element | null)?.closest?.('video, .player, .tarjeta__media, .reciente__media')) e.preventDefault();
+  });
+}

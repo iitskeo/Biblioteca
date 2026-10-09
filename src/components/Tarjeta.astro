@@ -17,7 +17,7 @@ const texto = prompts.map((p) => p.texto).join('\n\n');
 <li class:list={['tarjeta', { 'tarjeta--ancha': esHorizontal(formato) }]} data-id={id} data-texto={texto}>
   <a href={`/p/${id}/`} data-hover>
     <div class="tarjeta__media" style={`aspect-ratio: ${aspecto(formato)}; view-transition-name: ${vtName(id)}`}>
-      <video data-play="hover" muted loop playsinline preload={poster ? 'none' : 'metadata'} poster={media(poster)} aria-hidden="true" tabindex="-1">
+      <video controlslist="nodownload noremoteplayback noplaybackrate" disablepictureinpicture disableremoteplayback draggable="false" data-play="hover" muted loop playsinline preload={poster ? 'none' : 'metadata'} poster={media(poster)} aria-hidden="true" tabindex="-1">
         <source src={media(video)} type="video/mp4" />
       </video>
     </div>

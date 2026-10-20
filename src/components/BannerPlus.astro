@@ -23,6 +23,9 @@ import { PLUS_FIN, PLUS_URL } from '../lib/site';
 
 <style>
   .plus {
+    /* Por encima de la portada, que sube 64px bajo la barra y si no tapa el botón. */
+    position: relative;
+    z-index: 11;
     border-bottom: 1px solid var(--line);
     background: color-mix(in oklab, var(--accent) 10%, var(--bg));
   }

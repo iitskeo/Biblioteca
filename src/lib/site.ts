@@ -22,6 +22,6 @@ export const vtName = (id: string) => `v-${id.replace(/[^a-z0-9-]/gi, '-')}`;
 export const media = (clave: string | null | undefined) =>
   !clave ? undefined : /^https?:\/\//.test(clave) ? clave : `/media/${clave}`;
 
-// Comunidad Plus: el precio de lanzamiento (US$5 de por vida) termina el 1 de noviembre y pasa a US$12.99.
+// Comunidad Plus: el precio de lanzamiento ($5 al mes de por vida) termina el 1 de noviembre y pasa a $12.99 al mes.
 export const PLUS_URL = 'https://whop.com/itskeo/exp_Ylrzcy8EpXYedF/app/';
 export const PLUS_FIN = '2026-11-01T00:00:00-05:00';

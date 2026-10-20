@@ -1,0 +1,98 @@
+---
+import Icon from './Icon.astro';
+import { PLUS_FIN, PLUS_URL } from '../lib/site';
+---
+
+<aside class="plus" data-plus={PLUS_FIN} aria-label="Oferta de la comunidad Plus" hidden>
+  <div class="wrap plus__fila">
+    <p class="plus__texto">
+      <strong>Únete a Plus por US$5 de por vida.</strong>
+      <span>Tiempo limitado: el 1 de noviembre sube a US$12.99. Quien entre antes se queda en US$5 para siempre.</span>
+    </p>
+    <div class="plus__der">
+      <p class="plus__reloj mono" role="timer" aria-label="Tiempo restante">
+        <span><b data-d>00</b>d</span><span><b data-h>00</b>h</span><span><b data-m>00</b>m</span><span><b data-s>00</b>s</span>
+      </p>
+      <a class="btn btn--primario" href={PLUS_URL} target="_blank" rel="noopener">
+        Unirme a Plus
+        <Icon name="arrowUpRight" />
+      </a>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .plus {
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in oklab, var(--accent) 10%, var(--bg));
+  }
+  .plus__fila {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 24px;
+    padding-block: 12px;
+  }
+  .plus__texto {
+    margin: 0;
+    flex: 1 1 320px;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+  }
+  .plus__texto strong {
+    display: block;
+    font-family: var(--display);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+  }
+  .plus__texto span {
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+  .plus__der {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+  }
+  .plus__reloj {
+    margin: 0;
+    display: flex;
+    gap: 10px;
+    font-size: 0.8125rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .plus__reloj b {
+    color: var(--text);
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+</style>
+
+<script>
+  const banner = document.querySelector<HTMLElement>('[data-plus]');
+  if (banner) {
+    const fin = new Date(banner.dataset.plus!).getTime();
+    const campo = (k: string) => banner.querySelector<HTMLElement>(`[data-${k}]`)!;
+    const [d, h, m, s] = ['d', 'h', 'm', 's'].map(campo);
+    const dos = (n: number) => String(n).padStart(2, '0');
+    const pintar = () => {
+      const t = Math.max(0, fin - Date.now());
+      if (t === 0) {
+        banner.remove();
+        return false;
+      }
+      d.textContent = dos(Math.floor(t / 864e5));
+      h.textContent = dos(Math.floor(t / 36e5) % 24);
+      m.textContent = dos(Math.floor(t / 6e4) % 60);
+      s.textContent = dos(Math.floor(t / 1e3) % 60);
+      return true;
+    };
+    if (pintar()) {
+      banner.hidden = false;
+      const id = setInterval(() => pintar() || clearInterval(id), 1000);
+    }
+  }
+</script>

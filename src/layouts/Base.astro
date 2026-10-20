@@ -4,6 +4,7 @@ import '@fontsource-variable/geist';
 import '@fontsource-variable/geist-mono';
 import '../styles/global.css';
 import Icon from '../components/Icon.astro';
+import BannerPlus from '../components/BannerPlus.astro';
 import { HANDLE, TIKTOK_URL } from '../lib/site';
 
 interface Props {
@@ -79,6 +80,8 @@ const anio = new Date().getFullYear();
         </a>
       </div>
     </header>
+
+    {!privada && <BannerPlus />}
 
     <main id="contenido">
       <slot />

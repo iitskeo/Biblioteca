@@ -21,3 +21,7 @@ export const vtName = (id: string) => `v-${id.replace(/[^a-z0-9-]/gi, '-')}`;
 // Las claves de R2 se sirven desde /media/<clave>; una URL completa se respeta tal cual.
 export const media = (clave: string | null | undefined) =>
   !clave ? undefined : /^https?:\/\//.test(clave) ? clave : `/media/${clave}`;
+
+// Comunidad Plus: el precio de lanzamiento (US$5 de por vida) termina el 1 de noviembre y pasa a US$12.99.
+export const PLUS_URL = 'https://whop.com/itskeo/exp_Ylrzcy8EpXYedF/app/';
+export const PLUS_FIN = '2026-11-01T00:00:00-05:00';

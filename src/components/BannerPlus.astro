@@ -1,16 +1,21 @@
 ---
 import Icon from './Icon.astro';
-import { PLUS_FIN, PLUS_URL } from '../lib/site';
+import { PLUS_FIN, PLUS_PRECIO, PLUS_URL } from '../lib/site';
 ---
 
-<aside class="plus" data-plus={PLUS_FIN} aria-label="Oferta de la comunidad Plus" hidden>
+<aside class="plus" data-plus={PLUS_FIN} aria-label="Comunidad Plus" hidden>
   <div class="wrap plus__fila">
-    <p class="plus__texto">
+    <!-- Antes del cierre: oferta con cuenta regresiva. Después: invitación permanente al precio normal. -->
+    <p class="plus__texto" data-oferta>
       <strong>Únete a Plus por $5 al mes, de por vida.</strong>
       <span>Tiempo limitado: en noviembre sube a $12.99 al mes. Quien entre antes del 1 de noviembre se queda en $5 al mes para siempre.</span>
     </p>
+    <p class="plus__texto" data-normal hidden>
+      <strong>Únete a la comunidad Plus por {PLUS_PRECIO} al mes.</strong>
+      <span>Crea con IA junto a la comunidad de itskeo, aprende más rápido y no te quedes solo con los prompts.</span>
+    </p>
     <div class="plus__der">
-      <p class="plus__reloj mono" role="timer" aria-label="Tiempo restante">
+      <p class="plus__reloj mono" role="timer" aria-label="Tiempo restante" data-oferta>
         <span><b data-d>00</b>d</span><span><b data-h>00</b>h</span><span><b data-m>00</b>m</span><span><b data-s>00</b>s</span>
       </p>
       <a class="btn btn--primario" href={PLUS_URL} target="_blank" rel="noopener">
@@ -72,6 +77,16 @@ import { PLUS_FIN, PLUS_URL } from '../lib/site';
     font-size: 1.125rem;
     font-weight: 600;
   }
+  .plus--normal {
+    background: linear-gradient(
+      100deg,
+      color-mix(in oklab, var(--accent) 16%, var(--bg)),
+      color-mix(in oklab, var(--accent) 6%, var(--bg))
+    );
+  }
+  .plus [hidden] {
+    display: none;
+  }
 </style>
 
 <script>
@@ -81,10 +96,15 @@ import { PLUS_FIN, PLUS_URL } from '../lib/site';
     const campo = (k: string) => banner.querySelector<HTMLElement>(`[data-${k}]`)!;
     const [d, h, m, s] = ['d', 'h', 'm', 's'].map(campo);
     const dos = (n: number) => String(n).padStart(2, '0');
+    const modo = (oferta: boolean) => {
+      banner.querySelectorAll<HTMLElement>('[data-oferta]').forEach((e) => (e.hidden = !oferta));
+      banner.querySelectorAll<HTMLElement>('[data-normal]').forEach((e) => (e.hidden = oferta));
+      banner.classList.toggle('plus--normal', !oferta);
+    };
     const pintar = () => {
       const t = Math.max(0, fin - Date.now());
       if (t === 0) {
-        banner.remove();
+        modo(false);
         return false;
       }
       d.textContent = dos(Math.floor(t / 864e5));
@@ -93,8 +113,9 @@ import { PLUS_FIN, PLUS_URL } from '../lib/site';
       s.textContent = dos(Math.floor(t / 1e3) % 60);
       return true;
     };
-    if (pintar()) {
-      banner.hidden = false;
+    const vivo = pintar();
+    banner.hidden = false;
+    if (vivo) {
       const id = setInterval(() => pintar() || clearInterval(id), 1000);
     }
   }

@@ -25,3 +25,6 @@ export const media = (clave: string | null | undefined) =>
 // Comunidad Plus: el precio de lanzamiento ($5 al mes de por vida) termina el 1 de noviembre y pasa a $12.99 al mes.
 export const PLUS_URL = 'https://whop.com/itskeo/exp_Ylrzcy8EpXYedF/app/';
 export const PLUS_FIN = '2026-11-01T00:00:00-05:00';
+
+// Precio normal de Plus, ya terminada la oferta.
+export const PLUS_PRECIO = '$12.99';
